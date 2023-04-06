@@ -1,0 +1,743 @@
+﻿@page "/newfile"
+@using BlazorApp1
+@using Pdf_To_Xml.Data
+@inject ApplicationDbContext dbContext
+@using BlazorInputFile;
+@using Pdf_To_Xml.Models
+@using System.Xml
+@using System.Resources
+@using System.Reflection
+@using iTextSharp.text.pdf
+@using iTextSharp.text.pdf.parser
+@using org.pdfclown.documents.contents
+@inject IJSRuntime jsRunTime;
+@inject AuthenticationStateProvider authenticate;
+
+<PageTitle>Home</PageTitle>
+
+<AuthorizeView>
+	<Authorized>
+		@if(xmlList==null)
+		{
+			<h1>File</h1>
+		}
+		else
+		{
+			<h1>File</h1>
+		}
+		
+
+		<label>Only PDF File (Max - 2MB)</label>
+
+		<div class="form-floating mt-3">
+			<BlazorInputFile.InputFile value="@fileValue"  accept="application/pdf"  OnChange="@(e=>HandleFile(e))" />
+			<button @onclick="@(e=>Upload())">Upload</button>
+		</div>
+		<span class="@colorScheme">@warning</span>
+		<div class="form-floating">
+			<a href="" class="mt-5" @onclick="@(e=>Download())">@fileName</a>
+		</div>
+		<div style="@hide" class="mt-2">
+		<label class="mt-3">You can add two addtional files of max 2MB each!</label>
+		<div class="form-floating mt-1">
+			<BlazorInputFile.InputFile value="@fileValue1"  OnChange="@(e=>HandleAdditionalFile(e))" />
+			<button @onclick="@(e=>AdditionalUpload())">Additional Upload</button>
+		</div>
+			<span class="@colorScheme1">@warning1</span>
+			<br />
+			<div class="form-floating">
+				<a href="" class="mt-5" @onclick="@(e=>Download("1"))">@fileName1</a>
+			</div>
+			<div class="form-floating">
+				<a href="" class="mt-5" @onclick="@(e=>Download("2"))">@fileName2</a>
+			</div>
+			<button class="btn btn-primary mt-5" onclick="@ExtractXML">Extract</button>
+			<div class="spinner" style="@loader"></div>
+		</div>
+
+		<div style="@hideTable">
+			<table class="table table-bordered table-responsive mt-2">
+				@foreach(var name in namesList)
+				{
+					<tr>
+						<td>@name.Key</td>
+						<td>
+							<select id="mySelect @namesList.IndexOf(name)" value="@selectedNames.Where(x=>x.Text==name.Key).FirstOrDefault().Type" @onchange="@(e=>selectType(namesList.IndexOf(name),e.Value.ToString()))" >
+								@foreach (var type in typesList)
+								{
+									<option value="@type">@type</option>
+								}
+							</select>
+						</td>
+					</tr>
+				}
+			</table>
+
+			<button class="btn btn-primary mt-3" onclick="@Proceed">Proceed</button>
+			<button class="btn btn-primary mt-3" onclick="@Save">Save</button>
+
+			<div style="@hideSend" class="form-floating mt-3">
+				<button class="btn btn-primary mt-3" onclick="@SendXML">Send</button>
+				<input class="mt-1" type="number" id="sendText" @bind="sendValue"/>
+			</div>
+		</div>
+		
+	</Authorized>
+</AuthorizeView>
+
+
+
+@code{
+	public string loader;
+	public string hideSend;
+	public ApplicationDbContext context1;
+	public int sendValue;	
+	public List<WordDoc> xmlList;	
+	public string warning;
+	public string warning1;
+	public string hide;
+	public int indexRecord;
+	public string hideTable;
+	public string colorScheme;
+	public string colorScheme1;
+	public string fileValue;
+	public string fileName;
+	public string fileValue1;
+	public string fileName1;
+	public string fileName2;
+	public string Input;
+	public IFileListEntry[] globalFiles;
+	public IFileListEntry[] globalAddFiles;
+	public List<IGrouping<string,WordDoc>>? namesList;
+	public List<string> typesList;
+	public List<WordDoc> selectedNames;
+	public List<WordDoc> wordDocs;
+	public List<WordDoc> wordDocsTemp1;
+
+
+	protected override Task OnInitializedAsync()
+	{
+		context1 = dbContext;
+		context1.Database.EnsureCreated();
+		var context = context1.PdfTable.ToList();
+		var user = authenticate.GetAuthenticationStateAsync();
+		var name = user.Result.User.Identity.Name;
+		namesList = new List<IGrouping<string,WordDoc>>();
+		typesList = new List<string>();
+		selectedNames = new List<WordDoc>();
+		wordDocs = new List<WordDoc>();
+		wordDocsTemp1 = new List<WordDoc>();
+		indexRecord=-1;
+
+		ResourceManager resourceManager = new ResourceManager("Pdf_To_Xml.Resources.Types", Assembly.GetExecutingAssembly());
+		ResourceSet resourceSet = resourceManager.GetResourceSet(System.Globalization.CultureInfo.CurrentCulture, true, true);
+
+		foreach(System.Collections.DictionaryEntry resource in resourceSet)
+		{
+			typesList.Add(resource.Value.ToString());
+		}
+
+		if (String.IsNullOrWhiteSpace(name))
+			name = "publicUser";
+
+		DownloadRunning = false;
+		loader = "display:none";
+		warning = "";
+		hide = "display:none";
+		hideTable = "display:none";
+		hideSend = "display:none";
+		fileName = "";
+		fileName1 = "";
+		fileName2 = "";
+
+
+		if (name != null)
+		{
+			var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).ToList();
+			if (pdfRecord.FirstOrDefault() != null)
+			{
+				warning = "File Uploaded Successfully!";
+				colorScheme = "text-warning";
+				hide = "display:block";
+				fileName = pdfRecord.LastOrDefault().UserName.Substring(pdfRecord.LastOrDefault().UserName.IndexOf(":") + 1);
+
+				if (!String.IsNullOrWhiteSpace(pdfRecord.LastOrDefault().savedTypes))
+				{
+					getNameList(pdfRecord.LastOrDefault());
+					List<string> getTypes = pdfRecord.LastOrDefault().savedTypes.Split(',').ToList();
+					for(int i =0;i<selectedNames.Count;i++)
+					{
+						selectedNames[i].Type = getTypes[i];
+					}
+					indexRecord = context1.PdfTable.ToList().IndexOf(pdfRecord.LastOrDefault());
+					hideTable = "display:block";
+				}
+
+				if(context1.PdfTable.Where(x=>x.UserName==name+":"+fileName).FirstOrDefault().AddFile1!=null)
+				{
+					fileName1 = pdfRecord.LastOrDefault().FileNames.Substring(0,pdfRecord.LastOrDefault().FileNames.IndexOf(":"));
+					warning1 = "File Uploaded Successfully!";
+					colorScheme1 = "text-warning";
+				}
+				if (context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile2 != null)
+				{
+					fileName2 = pdfRecord.LastOrDefault().FileNames.Substring(pdfRecord.LastOrDefault().FileNames.IndexOf(":")+1);
+				}
+			}
+		}
+
+
+		return base.OnInitializedAsync();
+	}
+
+	public void selectType(int index,string value)
+	{
+		try
+		{
+			selectedNames[index].Type = value; 
+		}
+		catch
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured!");
+		}
+	}
+	private void SendXML()
+	{
+
+		try
+		{
+			if (sendValue <= 0)
+			{
+				return;
+			}
+			else if( sendValue > xmlList.Count)
+			{
+				jsRunTime.InvokeVoidAsync("alert", "The Number Exceeds The Range!");
+				return;
+			}
+			XmlWriterSettings settings = new XmlWriterSettings();
+			settings.Indent = true;
+			using (StringWriter ms = new StringWriter())
+			{
+				using (XmlWriter writer = XmlWriter.Create(ms, settings))
+				{
+					// Start the document
+					writer.WriteStartDocument();
+					writer.WriteStartElement("file");
+
+					for (int i = 0; i < sendValue; i++)
+					{
+						writer.WriteStartElement("person");
+						writer.WriteAttributeString("type", xmlList[i].Type);
+						writer.WriteStartElement("other");
+						writer.WriteAttributeString("rate", "0%");
+						writer.WriteString(xmlList[i].Text);
+						writer.WriteEndElement();
+						writer.WriteEndElement();
+					}
+
+
+
+
+					writer.WriteEndElement();
+					// End the document
+					writer.WriteEndDocument();
+				}
+				string checkInDebuggerResult = ms.ToString();
+			}
+		}
+		catch
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured!");
+			return;
+		}
+
+	}
+
+
+
+
+	private async Task showLoad()
+	{
+		loader = "display:block";
+		hideTable = "display:none";
+	}
+
+	private void getNameList(PdfTable pdfRecord)
+	{
+		try
+		{
+			PdfReader reader = new PdfReader(pdfRecord.Pdf);
+			List<string> lines = new List<string>();
+
+			BasicTextExtraction basicTextExtraction = new BasicTextExtraction();
+			wordDocs = basicTextExtraction.Advanced(pdfRecord);
+
+			wordDocsTemp1 = new List<WordDoc>();
+			var grouped1 = wordDocs.GroupBy(i => i.Alignment).Where(x => x.Key.Value < 130 || x.Key.Value > 400).OrderByDescending(z => z.Count()).ToList();
+			var minGroup = grouped1[0].Key.Value;
+
+			for (int z = 0; z < wordDocs.Count; z++)
+			{
+				var word = wordDocs[z];
+				string spaces = word.Text.Trim().Where(u => char.IsWhiteSpace(u)).FirstOrDefault().ToString();
+				word.Text = word.Text.Trim();
+
+				if(word.Text.Contains("THE END"))
+				{
+					break;
+				}
+
+				if ((z + 1) != wordDocs.Count && !String.IsNullOrWhiteSpace(word.Text) && !grouped1.Any(x=>x.Key.Value==word.Alignment) && (word.Text.Trim().Contains(word.Text.Trim().ToUpper())) && char.IsLetterOrDigit(word.Text[0]) && !String.IsNullOrWhiteSpace(wordDocs[z + 1].Text) && wordDocs[z + 1].Alignment != minGroup)
+				{
+					WordDoc doc = new WordDoc();
+					doc.Type = "";
+					doc.Alignment = word.Alignment;
+					doc.Text = word.Text.Trim();
+					wordDocsTemp1.Add(doc);
+
+					int tempAlign = (int)wordDocs[z + 1].Alignment;
+					do
+					{
+						z += 1;
+					} while (z < wordDocs.Count && wordDocs[z].Alignment == tempAlign);
+
+					z -= 1;
+				}
+			}
+
+			var defaultName=new WordDoc();
+			defaultName.Text="Default";
+			defaultName.Alignment = 0;
+
+			wordDocsTemp1.Insert(0, defaultName);
+			namesList = wordDocsTemp1.GroupBy(x => x.Text).ToList();
+			wordDocsTemp1.RemoveAt(0);
+
+			jsRunTime.InvokeVoidAsync("resetSelectList", namesList.Count, typesList.Count == 0 ? "" : typesList[0]);
+			foreach (var name in namesList)
+			{
+				var type = new WordDoc();
+				type.Text = name.Key;
+				type.Type = "";
+				selectedNames.Add(type);
+			}
+		}
+		catch (Exception ex)
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Either The Format Is Incorrect OR The Pdf File Might Be Invalid For Extraction!");
+			return;
+		}
+	}
+
+	private async Task ExtractXML()
+	{
+		try
+		{
+			selectedNames = new List<WordDoc>();
+			namesList = new List<IGrouping<string,WordDoc>>();
+			await Task.Run(showLoad);
+			await Task.Delay(2000);
+			var user = authenticate.GetAuthenticationStateAsync();
+			var userName = user.Result.User.Identity.Name;
+
+			if (String.IsNullOrWhiteSpace(userName))
+				userName = "publicUser";
+
+			var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == userName).LastOrDefault();
+			indexRecord = context1.PdfTable.ToList().IndexOf(pdfRecord);
+
+			getNameList(pdfRecord);
+
+			hideTable = "display:block";
+			loader = "display:none";
+
+
+
+			// Create the XML writer
+		}
+		catch(Exception ex)
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Either The Format Is Incorrect OR The Pdf File Might Be Invalid For Extraction!");
+			loader = "display:none";
+			return;
+		}
+	}
+
+	public async Task Save()	
+	{
+		try
+		{
+			List<string?> types = new List<string?>();
+			foreach (var name in selectedNames)
+			{
+				types.Add(name.Type);
+			}
+			context1.PdfTable.ToList()[indexRecord].savedTypes = String.Join(",", types);
+			context1.SaveChanges();
+			jsRunTime.InvokeVoidAsync("getAlert", "The Selected Types Have Been Saved!");
+		}
+		catch(Exception ex)
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Either The Format Is Incorrect OR The Pdf File Might Be Invalid For Extraction!");
+			return;
+		}
+	}
+
+	public async Task Proceed()
+	{
+		if (selectedNames.Any(x => x.Type == ""))
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Kindly, choose a type for every single name!");
+		}
+		else
+		{
+			try
+			{
+				Save();
+				List<WordDoc> XmlList = new List<WordDoc>();
+
+				int state = 0;
+
+				int i = 0;
+
+				while (i < wordDocs.Count)
+				{
+					WordDoc wordDoc = wordDocs[i];
+
+					if (!wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
+					{
+						wordDoc.Text = " " + wordDoc.Text;
+
+						if (state == 0)
+						{
+							var extractedName = selectedNames.Where(x => x.Text.Trim()=="Default").FirstOrDefault();
+
+							WordDoc word = new WordDoc();
+							if (extractedName == null)
+								word.Type = "unknown";
+							else
+								word.Type = extractedName.Type.ToLower();
+
+							word.Text = wordDoc.Text.TrimStart();
+							XmlList.Add(word);
+							state = 1;
+						}
+						else if (state == 1)
+						{
+							XmlList[XmlList.Count - 1].Text += wordDoc.Text;
+						}
+						i += 1;
+					}
+					else if (wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
+					{
+						WordDoc word = new WordDoc();
+						var v = wordDoc.Text.ToLower();
+
+						var extractedName = selectedNames.Where(x => v.Contains(x.Text.ToLower().Trim())).FirstOrDefault();
+
+						if (extractedName == null)
+							word.Type = "unknown";
+						else
+							word.Type = extractedName.Type.ToLower();
+
+						word.Text = "";
+
+						XmlList.Add(word);
+
+						i += 1;
+						var firstAlign = i < wordDocs.Count ? wordDocs[i].Alignment : 0;
+
+						while (i < wordDocs.Count && wordDocs[i].Alignment == firstAlign)
+						{
+							wordDocs[i].Text = wordDocs[i].Text;
+							XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? wordDocs[i].Text : " " + wordDocs[i].Text;
+							i += 1;
+						}
+						state = 0;
+					}
+
+				}
+
+
+				xmlList = XmlList;
+				string name = fileName.Contains(".pdf") ? fileName.Replace(".pdf", ".xml") : fileName + ".xml";
+
+				XmlWriterSettings settings = new XmlWriterSettings();
+				settings.Indent = true;
+
+
+
+				using (MemoryStream ms = new MemoryStream())
+				{
+					using (XmlWriter writer = XmlWriter.Create(ms, settings))
+					{
+						// Start the document
+						writer.WriteStartDocument();
+						writer.WriteStartElement("file");
+
+						foreach (var xmlItem in XmlList)
+						{
+							writer.WriteStartElement("person");
+							writer.WriteAttributeString("type", xmlItem.Type);
+							writer.WriteStartElement("other");
+							writer.WriteAttributeString("rate", "0%");
+							writer.WriteString(xmlItem.Text);
+							writer.WriteEndElement();
+							writer.WriteEndElement();
+						}
+
+
+
+
+						writer.WriteEndElement();
+						// End the document
+						writer.WriteEndDocument();
+					}
+					context1.PdfTable.ToList()[indexRecord].Xml = ms.ToArray();
+					context1.SaveChanges();
+					string xmlData = Convert.ToBase64String(ms.ToArray());
+					await jsRunTime.InvokeVoidAsync("saveAsFile", name, xmlData, "/newfile");
+				}
+
+				hideSend = "display:block";
+			}
+			catch(Exception ex)
+			{
+				jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Either The Format Is Incorrect OR The Pdf File Might Be Invalid For Extraction!");
+				return;
+			}
+		}
+	}
+
+
+
+	private void HandleFile(IFileListEntry[] files)
+	{
+		try
+		{
+			warning1 = "";
+			colorScheme1 = "";
+			globalAddFiles = null;
+			fileName1 = "";
+			fileValue1 = "";
+
+			if (files.FirstOrDefault().Size > 2000000)
+			{
+				warning = "File Size Exceeds 2MB, Kindly Choose Another File!";
+				colorScheme = "text-danger";
+				fileValue = "";
+				hide = "display:none";
+				fileName = "";
+				hideTable = "display:none";
+			}
+			else
+			{
+				warning = "File Chosen Successfully!";
+				colorScheme = "text-success";
+				globalFiles = files;
+				hide = "display:none";
+				fileName = "";
+				hideTable = "display:none";
+			}
+		}
+		catch
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again!");
+			return;
+		}		
+	}
+
+	private void HandleAdditionalFile(IFileListEntry[] files)
+	{
+		try
+		{
+			var user = authenticate.GetAuthenticationStateAsync();
+			var name = user.Result.User.Identity.Name;
+
+			if (context1.PdfTable.Where(x => x.UserName == (name + ":" + fileName)).FirstOrDefault().AddFile1 != null && context1.PdfTable.Where(x => x.UserName == (name + ":" + fileName)).FirstOrDefault().AddFile2 != null)
+			{
+				warning1 = "You Can't Upload More Than Two Files!";
+				colorScheme1 = "text-danger";
+			}
+			else if (files.FirstOrDefault().Size > 2000000)
+			{
+				warning1 = "File Size Exceeds 2MB, Kindly Choose Another File!";
+				colorScheme1 = "text-danger";
+			}
+			else
+			{
+				warning1 = "File Chosen Successfully!";
+				colorScheme1 = "text-success";
+				globalAddFiles = files;
+			}
+		}
+		catch
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again!");
+			return;
+		}
+	}
+
+	private async void Conversion(Byte[] pdf)
+	{
+		string convStr = System.Text.Encoding.Default.GetString(pdf);
+	}
+
+
+	private async void Upload()
+	{
+		try
+		{
+			if (warning == "File Chosen Successfully!" && globalFiles != null)
+			{
+				byte[] pdf = new byte[globalFiles.FirstOrDefault().Size];
+				fileValue = "";
+				fileName1="";
+				fileName2 = "";
+				fileName = globalFiles.FirstOrDefault().Name;
+				warning = "File Uploaded Successfully!";
+				colorScheme = "text-warning";
+				hide = "display:block";
+
+				try
+				{
+					pdf = await FileSender(globalFiles.FirstOrDefault());
+				}
+				catch
+				{
+
+				}	
+				finally
+				{
+					Conversion(pdf);
+					var user = authenticate.GetAuthenticationStateAsync();
+					var name = user.Result.User.Identity.Name;
+
+					PdfTable storePdf = new PdfTable();
+					storePdf.UserName = name + ":" + globalFiles.FirstOrDefault().Name;
+					storePdf.Pdf = pdf;
+					context1.PdfTable.Add(storePdf);
+					context1.SaveChanges();
+				}
+			}
+		}
+		catch
+		{
+			await jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again!");
+			return;
+		}
+
+	}
+
+	private async void AdditionalUpload()
+	{
+		try
+		{
+			if (warning1 == "File Chosen Successfully!" && globalAddFiles != null)
+			{
+				byte[] pdf = new byte[globalAddFiles.FirstOrDefault().Size];
+				warning1 = "File Uploaded Successfully!";
+				colorScheme1 = "text-warning";
+				var user = authenticate.GetAuthenticationStateAsync();
+				var name = user.Result.User.Identity.Name;
+
+				try
+				{
+					if (context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile1 == null)
+					{
+						fileName1 = globalAddFiles.FirstOrDefault().Name;
+					}
+					else
+					{
+						fileName2 = globalAddFiles.FirstOrDefault().Name;
+					}
+
+					pdf = await FileSender(globalAddFiles.FirstOrDefault());
+				}
+				catch
+				{
+
+				}
+				finally
+				{
+					Conversion(pdf);
+
+					if (context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile1==null)
+					{
+						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile1 = pdf;
+						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().FileNames = globalAddFiles.FirstOrDefault().Name+":";
+					}
+					else
+					{
+						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile2 = pdf;
+						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().FileNames += globalAddFiles.FirstOrDefault().Name;
+					}
+					context1.SaveChanges();
+				}
+			}
+		}
+		catch
+		{
+			await jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again!");
+			return;
+		}
+
+	}
+
+	public async Task<byte[]> FileSender(IFileListEntry fileListEntry)
+	{
+		using (var ms=new MemoryStream())
+		{
+			await fileListEntry.Data.CopyToAsync(ms);
+			return ms.ToArray();
+		}
+	}
+
+	private bool DownloadRunning;
+	private async Task Download(string cond="0",PdfTable pdf=null)
+	{
+		if(DownloadRunning)
+			return;
+
+		DownloadRunning = true;
+		try
+		{
+			var user = authenticate.GetAuthenticationStateAsync();
+			var name = user.Result.User.Identity.Name;
+
+			if(cond=="0")
+			{
+				var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).LastOrDefault();
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdfRecord.UserName.Substring(pdfRecord.UserName.IndexOf(":") + 1), Convert.ToBase64String(pdfRecord.Pdf), "/newfile");
+				DownloadRunning = false;
+			}
+			else if(cond=="1")
+			{
+				var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).LastOrDefault();
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdfRecord.FileNames.Substring(0,pdfRecord.FileNames.IndexOf(":")), Convert.ToBase64String(pdfRecord.AddFile1), "/newfile");
+				DownloadRunning = false;
+			}
+			else if (cond == "2")
+			{
+				var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).LastOrDefault();
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdfRecord.FileNames.Substring(pdfRecord.FileNames.IndexOf(":")+1), Convert.ToBase64String(pdfRecord.AddFile2), "/newfile");
+				DownloadRunning = false;
+			}
+		}
+		catch
+		{
+			await jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again Or Reload The Page!");
+			return;
+		}
+		finally
+		{
+			DownloadRunning = false;
+		}
+		
+	}
+
+	
+
+}
+

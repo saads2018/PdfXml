@@ -1,0 +1,191 @@
+﻿@page "/"
+@page "/public"
+@using Pdf_To_Xml.Data
+@inject ApplicationDbContext dbContext
+@using BlazorInputFile;
+@using Pdf_To_Xml.Models
+@using iTextSharp.text.pdf
+@using iTextSharp.text.pdf.parser
+@inject IJSRuntime jsRunTime;
+@inject AuthenticationStateProvider authenticate;
+
+<PageTitle>Home</PageTitle>
+
+<AuthorizeView>
+	<Authorized>
+		<h1>Hello 
+			@if (context1.ExtraUserInfo.ToList().Where(x=>x.UserName==context.User.Identity.Name).FirstOrDefault()==null || String.IsNullOrWhiteSpace(context1.ExtraUserInfo.ToList().Where(x => x.UserName == context.User.Identity.Name).FirstOrDefault().Name))
+			{
+			   @context.User.Identity.Name
+		   }
+		   else
+		   {
+				@context1.ExtraUserInfo.Where(x => x.UserName == context.User.Identity.Name).FirstOrDefault().Name
+		   }
+		   !
+			</h1>
+<br />
+
+	</Authorized>
+	<NotAuthorized>
+		<h3 >Public Page</h3>
+	</NotAuthorized>
+</AuthorizeView>
+
+		<table>
+			<tbody>
+				<tr>
+					<td>
+						<table border="0">
+							<thead>
+								<tr border="11">
+									<th width="200">User</th>
+									<th width="300">PDF</th>
+									<th width="200">XML</th>
+									<th width="200">File 1</th>
+									<th width="200">File 2</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach(PdfTable pdf in Enumerable.Reverse(context1.PdfTable.ToList()).ToList())
+								{
+									<tr>
+										<td><a href="" target="_self" @onclick="@(e=> ViewUserInfo(@pdf.UserName.Substring(0,pdf.UserName.IndexOf(':'))))">@pdf.UserName.Substring(0,pdf.UserName.IndexOf('@'))</a></td>
+										<td><a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1)</a></td>
+									<td>
+											@if (pdf.Xml != null)
+											{
+												<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
+													@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml")
+												</a>
+											}
+									</td>
+									<td>
+											@if (pdf.AddFile1 != null)
+											{
+												<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
+													@pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':'))
+												</a>
+											}
+										</td>
+										<td>
+											@if (pdf.AddFile2 != null)
+											{
+												<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
+													@pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1)
+												</a>
+											}
+										</td>
+									</tr>
+								}	
+							</tbody>
+						</table>
+					</td>
+					<div style="@showUserInfo" class="border-white">
+						<thead><b>User Info</b></thead>
+					<div class="container">
+						<td><i>Name: </i>@Name</td>
+					</div>
+					<div class="container">
+					<td><i>About: </i>@About</td>
+					</div>
+					</div>				
+				</tr>
+			</tbody>
+		</table>
+
+
+
+@code{
+	public string showUserInfo;
+	public string Name;
+	public string About;
+	public ApplicationDbContext context1;
+	private bool DownloadRunning;
+	
+	public async Task ViewUserInfo(string UserName)
+	{
+		try
+		{
+			var info = context1.ExtraUserInfo.ToList().Where(x => x.UserName == UserName).FirstOrDefault();
+			if(info!=null)
+			{
+				Name = info.Name;
+				About = info.About;
+			}
+			else
+			{
+				Name = "Not Specified Yet!";
+				About = "Not Specified Yet!";
+			}
+			showUserInfo = "display:block";
+		}
+		catch
+		{
+			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again!");
+			return;
+		}
+	}
+
+	protected override Task OnInitializedAsync()
+	{
+		context1 = dbContext;
+		context1.Database.EnsureCreated();
+		var context = context1.PdfTable.ToList();
+		var user = authenticate.GetAuthenticationStateAsync();
+		var name = user.Result.User.Identity.Name;
+		DownloadRunning = false;
+		Name = "Not Specified Yet";
+		About = "Not Specified Yet";
+		showUserInfo = "display:none";
+
+		return base.OnInitializedAsync();
+	}
+
+
+
+	private async Task Download(string cond="0",PdfTable pdf=null)
+	{
+		if(DownloadRunning)
+			return;
+
+		DownloadRunning = true;
+		try
+		{
+			if(cond == "2")
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.UserName.Substring(pdf.UserName.IndexOf(":") + 1).Replace(".pdf",".xml"), Convert.ToBase64String(pdf.Xml),"/");
+				DownloadRunning = false;
+			}
+			else if (cond == "3")
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.FileNames.Substring(0, pdf.FileNames.IndexOf(":")), Convert.ToBase64String(pdf.AddFile1), "/");
+				DownloadRunning = false;
+			}
+			else if (cond == "4")
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.FileNames.Substring(pdf.FileNames.IndexOf(":") + 1), Convert.ToBase64String(pdf.AddFile2), "/");
+				DownloadRunning = false;
+			}
+			else
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.UserName.Substring(pdf.UserName.IndexOf(":") + 1), Convert.ToBase64String(pdf.Pdf),"/");
+				DownloadRunning = false;
+			}
+		}
+		catch
+		{
+			await jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again Or Reload The Page!");
+			return;
+		}
+		finally
+		{
+			DownloadRunning = false;
+		}
+		
+	}
+
+	
+
+}
+

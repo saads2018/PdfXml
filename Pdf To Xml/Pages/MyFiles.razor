@@ -1,0 +1,235 @@
+﻿@page "/myfiles"
+@using Pdf_To_Xml.Data
+@inject ApplicationDbContext dbContext
+@using BlazorInputFile;
+@using Pdf_To_Xml.Models
+@using iTextSharp.text.pdf
+@using iTextSharp.text.pdf.parser
+@inject IJSRuntime jsRunTime;
+@inject AuthenticationStateProvider authenticate;
+
+<PageTitle>Home</PageTitle>
+
+<AuthorizeView>
+	<Authorized>
+		<h3>My Files</h3>
+
+		<button @onclick="@(e=> deleteFiles())" style="margin-top:10px;" class="btn btn-danger">Delete</button>
+		<table style="margin-top:15px;">
+			<tbody>
+				<tr>
+					<td>
+						<table border="0">
+							<thead>
+								<tr border="11">
+									<th width="200">PDF</th>
+									<th width="300">XML</th>
+									<th width="200">File 2</th>
+									<th width="200">File 3</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (PdfTable pdf in Enumerable.Reverse(context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(':')) == context.User.Identity.Name)).ToList())
+								{
+									<tr>
+										<td>
+											<input type="checkbox" value="@pdf.Id" id="pdfId" @onclick="@(e=>checkPdf(pdf.Id))" name="pdfName"/>
+											<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1)</a>
+											</td>
+										<td>
+											@if (pdf.Xml != null)
+											{
+												<input @onclick="@(e=>checkXml(pdf.Id))" type="checkbox" value="@pdf.Id" id="xmlId" name="xmlName" />
+												<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
+													@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml")
+												</a>
+											}
+										</td>
+										<td>
+											@if (pdf.AddFile1 != null)
+											{
+												<input @onclick="@(e=>checkaddFile1(pdf.Id))" type="checkbox" value="@pdf.Id" id="addFile1Id" name="addFile1Name" />
+												<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
+													@pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':'))
+												</a>
+											}
+										</td>
+										<td>
+											@if (pdf.AddFile2 != null)
+											{
+												<input @onclick="@(e=>checkaddFile2(pdf.Id))" type="checkbox" value="@pdf.Id" id="addFile2Id" name="addFile2Name" />
+												<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
+													@pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1)
+												</a>
+											}
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</td>
+			</tr>
+			</tbody>
+		</table>
+	</Authorized>
+</AuthorizeView>
+
+
+
+@code {
+	public string showUserInfo;
+	public string Name;
+	public string About;
+	public ApplicationDbContext context1;
+	private bool DownloadRunning;
+	public List<string> pdfChecked;
+	public List<string> xmlChecked;
+	public List<string> addFile1Checked;
+	public List<string> addFile2Checked;
+
+
+	protected override Task OnInitializedAsync()
+	{
+		context1 = dbContext;
+		context1.Database.EnsureCreated();
+		var user = authenticate.GetAuthenticationStateAsync();
+		var name = user.Result.User.Identity.Name;
+		DownloadRunning = false;
+		pdfChecked = new List<string>();
+		xmlChecked = new List<string>();
+		addFile1Checked = new List<string>();
+		addFile2Checked = new List<string>();
+
+		return base.OnInitializedAsync();
+	}
+
+
+	private async Task checkPdf(int id)
+	{
+		if (pdfChecked.Where(x => x == id.ToString()).FirstOrDefault() == null)
+			pdfChecked.Add(id.ToString());
+		else
+			pdfChecked.Remove(pdfChecked.Where(x => x == id.ToString()).FirstOrDefault());
+	}
+
+	private async Task checkXml(int id)
+	{
+		if (xmlChecked.Where(x => x == id.ToString()).FirstOrDefault() == null)
+			xmlChecked.Add(id.ToString());
+		else
+			xmlChecked.Remove(xmlChecked.Where(x => x == id.ToString()).FirstOrDefault());
+	}
+
+	private async Task checkaddFile1(int id)
+	{
+		if (addFile1Checked.Where(x => x == id.ToString()).FirstOrDefault() == null)
+			addFile1Checked.Add(id.ToString());
+		else
+			addFile1Checked.Remove(addFile1Checked.Where(x => x == id.ToString()).FirstOrDefault());
+	}
+
+	private async Task checkaddFile2(int id)
+	{
+		if (addFile2Checked.Where(x => x == id.ToString()).FirstOrDefault() == null)
+			addFile2Checked.Add(id.ToString());
+		else
+			addFile2Checked.Remove(addFile2Checked.Where(x => x == id.ToString()).FirstOrDefault());
+	}
+
+	private async Task deleteFiles()
+	{
+
+		if(pdfChecked.Count>0 || xmlChecked.Count>0 || addFile1Checked.Count>0 || addFile2Checked.Count>0)
+		{
+			List<string> deleteOnlyXmls = new List<string>();
+			deleteOnlyXmls = xmlChecked.FindAll(x => !pdfChecked.Contains(x));
+
+			List<string> deleteOnlyFile1s = new List<string>();
+			deleteOnlyFile1s = addFile1Checked.FindAll(x => !pdfChecked.Contains(x));
+
+			List<string> deleteOnlyFile2s = new List<string>();
+			deleteOnlyFile2s = addFile2Checked.FindAll(x => !pdfChecked.Contains(x));
+
+			foreach (var item in pdfChecked)
+				context1.PdfTable.Remove(context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault());
+
+			if (deleteOnlyXmls.Count > 0)
+			{
+				foreach (var item in deleteOnlyXmls)
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().Xml = null;
+			}
+
+
+			if (deleteOnlyFile2s.Count > 0)
+			{
+				foreach (var item in deleteOnlyFile2s)
+				{
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile2 = null;
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames = context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.Substring(0,context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.IndexOf(":")+1); ;
+				}
+			}
+
+			if (deleteOnlyFile1s.Count > 0)
+			{
+				foreach (var item in deleteOnlyFile1s)
+				{
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile1 = context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile2;
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile2 = null;
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames = context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.Substring(context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.IndexOf(":")+1)+":"; ;
+				}
+			}
+
+			context1.SaveChanges();
+			await jsRunTime.InvokeVoidAsync("reload", "/");
+			await jsRunTime.InvokeVoidAsync("reload", "/myFiles");
+		}
+		else
+		{
+			await jsRunTime.InvokeVoidAsync("getAlert", "Kindly Create And Select At Least One Option First!");
+		}
+	}
+	private async Task Download(string cond = "0", PdfTable pdf = null)
+	{
+		if (DownloadRunning)
+			return;
+
+		DownloadRunning = true;
+		try
+		{
+			if (cond == "2")
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.UserName.Substring(pdf.UserName.IndexOf(":") + 1).Replace(".pdf", ".xml"), Convert.ToBase64String(pdf.Xml), "/myfiles");
+				DownloadRunning = false;
+			}
+			else if (cond == "3")
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.FileNames.Substring(0, pdf.FileNames.IndexOf(":")), Convert.ToBase64String(pdf.AddFile1), "/myfiles");
+				DownloadRunning = false;
+			}
+			else if (cond == "4")
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.FileNames.Substring(pdf.FileNames.IndexOf(":") + 1), Convert.ToBase64String(pdf.AddFile2), "/myfiles");
+				DownloadRunning = false;
+			}
+			else
+			{
+				await jsRunTime.InvokeVoidAsync("saveAsFile", pdf.UserName.Substring(pdf.UserName.IndexOf(":") + 1), Convert.ToBase64String(pdf.Pdf), "/myfiles");
+				DownloadRunning = false;
+			}
+		}
+		catch
+		{
+			await jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again Or Reload The Page!");
+			return;
+		}
+		finally
+		{
+			DownloadRunning = false;
+		}
+
+	}
+
+
+
+}
+
