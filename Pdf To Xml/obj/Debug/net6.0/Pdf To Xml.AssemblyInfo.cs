@@ -11,7 +11,6 @@
 using System;
 using System.Reflection;
 
-[assembly: Microsoft.AspNetCore.Identity.UI.UIFrameworkAttribute("Bootstrap5")]
 [assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("aspnet-Pdf_To_Xml-B64C0BBB-95D9-493E-9D33-FBF59102176C")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("Pdf To Xml")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
