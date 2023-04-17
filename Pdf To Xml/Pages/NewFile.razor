@@ -364,6 +364,7 @@
 		}
 	}
 
+	int SaveCond = 0;
 	public async Task Save()	
 	{
 		try
@@ -375,7 +376,10 @@
 			}
 			context1.PdfTable.ToList()[indexRecord].savedTypes = String.Join(",", types);
 			context1.SaveChanges();
-			jsRunTime.InvokeVoidAsync("getAlert", "The Selected Types Have Been Saved!");
+			if(SaveCond==0)
+				jsRunTime.InvokeVoidAsync("getAlert", "The Selected Types Have Been Saved!");
+			else
+				jsRunTime.InvokeVoidAsync("getAlert", "The File Has Been Successfully Created!");
 		}
 		catch(Exception ex)
 		{
@@ -394,7 +398,6 @@
 		{
 			try
 			{
-				Save();
 				List<WordDoc> XmlList = new List<WordDoc>();
 
 				int state = 0;
@@ -498,6 +501,9 @@
 					context1.SaveChanges();
 					string xmlData = Convert.ToBase64String(ms.ToArray());
 					await jsRunTime.InvokeVoidAsync("saveAsFile", name, xmlData, "/newfile");
+					SaveCond = 1;
+					Save();
+					SaveCond = 0;
 				}
 
 				hideSend = "display:block";
