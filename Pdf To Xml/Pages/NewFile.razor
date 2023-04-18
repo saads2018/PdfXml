@@ -62,6 +62,9 @@
 					<tr>
 						<td>@name.Key</td>
 						<td>
+							<input @onclick="@(e=>checkName(name.Key))" type="checkbox" value="@name.Key" id="@name.Key" checked name="extractedName" />
+						</td>
+						<td>
 							<select id="mySelect @namesList.IndexOf(name)" value="@selectedNames.Where(x=>x.Text==name.Key).FirstOrDefault().Type" @onchange="@(e=>selectType(namesList.IndexOf(name),e.Value.ToString()))" >
 								@foreach (var type in typesList)
 								{
@@ -90,6 +93,7 @@
 @code{
 	public string loader;
 	public string hideSend;
+	public List<string> exemptNames;
 	public ApplicationDbContext context1;
 	public int sendValue;	
 	public List<WordDoc> xmlList;	
@@ -127,6 +131,7 @@
 		selectedNames = new List<WordDoc>();
 		wordDocs = new List<WordDoc>();
 		wordDocsTemp1 = new List<WordDoc>();
+		exemptNames = new List<string>();
 		indexRecord=-1;
 
 		ResourceManager resourceManager = new ResourceManager("Pdf_To_Xml.Resources.Types", Assembly.GetExecutingAssembly());
@@ -164,7 +169,16 @@
 				if (!String.IsNullOrWhiteSpace(pdfRecord.LastOrDefault().savedTypes))
 				{
 					getNameList(pdfRecord.LastOrDefault());
-					List<string> getTypes = pdfRecord.LastOrDefault().savedTypes.Split(',').ToList();
+					List<string> getTypes = new List<string>();
+
+					if(pdfRecord.LastOrDefault().savedTypes.Contains(":"))
+					{
+						getTypes = pdfRecord.LastOrDefault().savedTypes.Substring(0, pdfRecord.LastOrDefault().savedTypes.IndexOf(":")).Split(',').ToList();
+						exemptNames = pdfRecord.LastOrDefault().savedTypes.Substring(pdfRecord.LastOrDefault().savedTypes.IndexOf(":")+1).Split('=').ToList();
+					}
+					else
+						getTypes = pdfRecord.LastOrDefault().savedTypes.Split(',').ToList();
+
 					for(int i =0;i<selectedNames.Count;i++)
 					{
 						selectedNames[i].Type = getTypes[i];
@@ -186,11 +200,19 @@
 			}
 		}
 
-
 		return base.OnInitializedAsync();
 	}
 
-	public void selectType(int index,string value)
+
+	protected override Task OnAfterRenderAsync(bool firstRender)
+	{
+		foreach(var name in exemptNames)
+			jsRunTime.InvokeVoidAsync("removeName", name);
+
+		return base.OnAfterRenderAsync(firstRender);
+	}
+
+	public void selectType(int index, string value)
 	{
 		try
 		{
@@ -201,6 +223,19 @@
 			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured!");
 		}
 	}
+
+	private async Task checkName(string name)
+	{
+		if(exemptNames.Any(x=>x==name))
+		{
+			exemptNames.Remove(name);
+		}
+		else
+		{
+			exemptNames.Add(name);
+		}
+	}
+
 	private void SendXML()
 	{
 
@@ -375,9 +410,11 @@
 				types.Add(name.Type);
 			}
 			context1.PdfTable.ToList()[indexRecord].savedTypes = String.Join(",", types);
+			if(exemptNames.Count>0)
+				context1.PdfTable.ToList()[indexRecord].savedTypes += ":" + String.Join('=', exemptNames);
 			context1.SaveChanges();
 			if(SaveCond==0)
-				jsRunTime.InvokeVoidAsync("getAlert", "The Selected Types Have Been Saved!");
+				jsRunTime.InvokeVoidAsync("getAlert", "The Selected Types And Names Have Been Saved!");
 			else
 				jsRunTime.InvokeVoidAsync("getAlert", "The File Has Been Successfully Created!");
 		}
@@ -390,9 +427,9 @@
 
 	public async Task Proceed()
 	{
-		if (selectedNames.Any(x => x.Type == ""))
+		if (selectedNames.Any(x => x.Type == "" && !exemptNames.Any(y=>y.Trim()==x.Text.Trim())))
 		{
-			jsRunTime.InvokeVoidAsync("getAlert", "Kindly, choose a type for every single name!");
+			jsRunTime.InvokeVoidAsync("getAlert", "Kindly, choose a type for every single selected name!");
 		}
 		else
 		{
@@ -410,9 +447,9 @@
 
 					if (!wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
 					{
-						wordDoc.Text = " " + wordDoc.Text;
+						wordDoc.Text = " " + wordDoc.Text.Trim();
 
-						if (state == 0)
+						if (state == 0 && !exemptNames.Any(x=>x=="Default"))
 						{
 							var extractedName = selectedNames.Where(x => x.Text.Trim()=="Default").FirstOrDefault();
 
@@ -422,13 +459,13 @@
 							else
 								word.Type = extractedName.Type.ToLower();
 
-							word.Text = wordDoc.Text.TrimStart();
+							word.Text = wordDoc.Text;
 							XmlList.Add(word);
 							state = 1;
 						}
 						else if (state == 1)
 						{
-							XmlList[XmlList.Count - 1].Text += wordDoc.Text;
+							XmlList[XmlList.Count - 1].Text += " " + wordDoc.Text.Trim();
 						}
 						i += 1;
 					}
@@ -458,6 +495,23 @@
 							i += 1;
 						}
 						state = 0;
+
+						
+						if (exemptNames.Any(x => x.Trim() == wordDoc.Text.Trim()))
+						{
+							if (exemptNames.Any(x => x == "Default"))
+							{
+								XmlList.RemoveAt(XmlList.Count - 1);
+							}
+							else
+							{
+								var nameDefault = selectedNames.Where(x => x.Text.Trim() == "Default").FirstOrDefault();
+								XmlList[XmlList.Count - 1].Type = nameDefault.Type.ToLower().Trim();
+
+								var text = XmlList[XmlList.Count - 1].Text;
+								XmlList[XmlList.Count - 1].Text = wordDoc.Text.Trim() + " " + text;
+							}
+						}
 					}
 
 				}
@@ -603,6 +657,7 @@
 				fileName2 = "";
 				fileName = globalFiles.FirstOrDefault().Name;
 				warning = "File Uploaded Successfully!";
+				exemptNames = new List<string>();
 				colorScheme = "text-warning";
 				hide = "display:block";
 

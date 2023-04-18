@@ -44,6 +44,12 @@ function resetSelectList(count,value) {
     }
 }
 
+function removeName(name)
+{
+    var checkbox = document.getElementById(name);
+    checkbox.checked = false;
+}
+
 function getAlert(message)
 {
     alert(message);
