@@ -132,7 +132,7 @@ namespace Pdf_To_Xml
         }
 
 
-        public List<WordDoc> Advanced(PdfTable pdf)
+        public List<WordDoc> Advanced(PdfTable pdf, int cond)
         {
             List<WordDoc> wordDocs = new List<WordDoc>();
             // 1. Opening the PDF file...
@@ -196,6 +196,13 @@ namespace Pdf_To_Xml
                                 {
                                     string msg = ex.ToString();
                                 }
+                            }
+
+                            if(cond == 1 && i == 1)
+                            {
+                                WordDoc wordDoc = new WordDoc();
+                                wordDoc.Alignment = -130392192;
+                                wordDocs.Add(wordDoc);
                             }
                         }
                         catch(Exception ex)

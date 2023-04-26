@@ -17,15 +17,7 @@
 
 <AuthorizeView>
 	<Authorized>
-		@if(xmlList==null)
-		{
-			<h1>File</h1>
-		}
-		else
-		{
-			<h1>File</h1>
-		}
-		
+		<h1>File</h1>
 
 		<label>Only PDF File (Max - 2MB)</label>
 
@@ -51,7 +43,15 @@
 			<div class="form-floating">
 				<a href="" class="mt-5" @onclick="@(e=>Download("2"))">@fileName2</a>
 			</div>
-			<button class="btn btn-primary mt-5" onclick="@ExtractXML">Extract</button>
+
+			<br/>
+			<div>
+			<input type="checkbox" onclick="@checkFirstPgDefault" id="pgDefault"  name="pgDefault" checked/>
+			<label onclick="changeCheck('pgDefault',2)">Place the first page under the type default</label>
+			</div>
+			<span style="@hidePgCheck" class="text-warning">You Need To Press Extract To See The Changes!</span>
+
+			<button class="btn btn-primary mt-3" onclick="@ExtractXML">Extract</button>
 			<div class="spinner" style="@loader"></div>
 		</div>
 
@@ -92,6 +92,7 @@
 
 @code{
 	public string loader;
+	public int firstPageDefault;
 	public string hideSend;
 	public List<string> exemptNames;
 	public ApplicationDbContext context1;
@@ -100,6 +101,7 @@
 	public string warning;
 	public string warning1;
 	public string hide;
+	public string hidePgCheck;
 	public int indexRecord;
 	public string hideTable;
 	public string colorScheme;
@@ -131,6 +133,7 @@
 		selectedNames = new List<WordDoc>();
 		wordDocs = new List<WordDoc>();
 		wordDocsTemp1 = new List<WordDoc>();
+		firstPageDefault = 1;
 		exemptNames = new List<string>();
 		indexRecord=-1;
 
@@ -149,6 +152,7 @@
 		loader = "display:none";
 		warning = "";
 		hide = "display:none";
+		hidePgCheck = "display:none";
 		hideTable = "display:none";
 		hideSend = "display:none";
 		fileName = "";
@@ -168,6 +172,11 @@
 
 				if (!String.IsNullOrWhiteSpace(pdfRecord.LastOrDefault().savedTypes))
 				{
+					if(pdfRecord.LastOrDefault().FirstPgDf==0)
+					{
+						firstPageDefault=0;
+					}
+
 					getNameList(pdfRecord.LastOrDefault());
 					List<string> getTypes = new List<string>();
 
@@ -185,6 +194,7 @@
 					}
 					indexRecord = context1.PdfTable.ToList().IndexOf(pdfRecord.LastOrDefault());
 					hideTable = "display:block";
+
 				}
 
 				if(context1.PdfTable.Where(x=>x.UserName==name+":"+fileName).FirstOrDefault().AddFile1!=null)
@@ -207,9 +217,29 @@
 	protected override Task OnAfterRenderAsync(bool firstRender)
 	{
 		foreach(var name in exemptNames)
-			jsRunTime.InvokeVoidAsync("removeName", name);
+			jsRunTime.InvokeVoidAsync("changeCheck", name,0);
+
+		if(firstPageDefault==0)
+			jsRunTime.InvokeVoidAsync("changeCheck", "pgDefault",0);
 
 		return base.OnAfterRenderAsync(firstRender);
+	}
+
+	public async Task checkFirstPgDefault()
+	{
+		firstPageDefault = firstPageDefault == 0 ? 1 : 0;
+
+		int chosenIndex = wordDocs.IndexOf(wordDocs.Where(x => x.Alignment == -130392192).FirstOrDefault());
+
+		if(wordDocs.Count>0 && hideTable == "display:block")
+		{
+			if (chosenIndex == -1 && firstPageDefault == 1)
+				hidePgCheck = "display:block";
+			else if (chosenIndex != -1 && firstPageDefault == 0)
+				hidePgCheck = "display:block";
+			else
+				hidePgCheck = "display:none";
+		}
 	}
 
 	public void selectType(int index, string value)
@@ -306,22 +336,24 @@
 			List<string> lines = new List<string>();
 
 			BasicTextExtraction basicTextExtraction = new BasicTextExtraction();
-			wordDocs = basicTextExtraction.Advanced(pdfRecord);
+			wordDocs = basicTextExtraction.Advanced(pdfRecord,firstPageDefault);
 
 			wordDocsTemp1 = new List<WordDoc>();
-			var grouped1 = wordDocs.GroupBy(i => i.Alignment).Where(x => x.Key.Value < 130 || x.Key.Value > 400).OrderByDescending(z => z.Count()).ToList();
+			var grouped1 = wordDocs.GroupBy(i => i.Alignment).Where(x => x.Key.Value < 130 || x.Key.Value > 360).OrderByDescending(z => z.Count()).ToList();
 			var minGroup = grouped1[0].Key.Value;
 
-			for (int z = 0; z < wordDocs.Count; z++)
+			int chosenIndex = wordDocs.IndexOf(wordDocs.Where(x => x.Alignment == -130392192).FirstOrDefault());				
+			int index = 0;
+
+			if(firstPageDefault==1)
+				index=chosenIndex+1;
+
+			for (int z = index; z < wordDocs.Count; z++)
 			{
 				var word = wordDocs[z];
 				string spaces = word.Text.Trim().Where(u => char.IsWhiteSpace(u)).FirstOrDefault().ToString();
 				word.Text = word.Text.Trim();
 
-				if(word.Text.Contains("THE END"))
-				{
-					break;
-				}
 
 				if ((z + 1) != wordDocs.Count && !String.IsNullOrWhiteSpace(word.Text) && !grouped1.Any(x=>x.Key.Value==word.Alignment) && (word.Text.Trim().Contains(word.Text.Trim().ToUpper())) && char.IsLetterOrDigit(word.Text[0]) && !String.IsNullOrWhiteSpace(wordDocs[z + 1].Text) && wordDocs[z + 1].Alignment != minGroup)
 				{
@@ -344,6 +376,26 @@
 			var defaultName=new WordDoc();
 			defaultName.Text="Default";
 			defaultName.Alignment = 0;
+
+			var exemptList = new List<string>();
+			exemptList.Add("FADE TO");
+			exemptList.Add("CUT TO");
+			exemptList.Add("THE END");
+			exemptList.Add("FADE IN");
+			exemptList.Add("FADE OUT");
+			exemptList.Add("DISSOLVE TO");
+			exemptList.Add("FREEZE FRAME");
+			exemptList.Add("IRIS IN");
+			exemptList.Add("IRIS OUT");
+			exemptList.Add("STOCK SHOT");
+			exemptList.Add("TIME CUT");
+			exemptList.Add("WIPE TO");
+			exemptList.Add("SMASH CUT");
+			exemptList.Add("MATCH CUT");
+			exemptList.Add("JUMP CUT");
+			exemptList.Add("FLASHBACK");
+
+			wordDocsTemp1.RemoveAll(x=> exemptList.Any(y=>x.Text.Contains(y)));
 
 			wordDocsTemp1.Insert(0, defaultName);
 			namesList = wordDocsTemp1.GroupBy(x => x.Text).ToList();
@@ -369,6 +421,7 @@
 	{
 		try
 		{
+			hidePgCheck = "display:none";
 			selectedNames = new List<WordDoc>();
 			namesList = new List<IGrouping<string,WordDoc>>();
 			await Task.Run(showLoad);
@@ -405,6 +458,17 @@
 		try
 		{
 			List<string?> types = new List<string?>();
+			int chosenIndex = wordDocs.IndexOf(wordDocs.Where(x => x.Alignment == -130392192).FirstOrDefault());
+
+			if(chosenIndex==-1)
+			{
+				context1.PdfTable.ToList()[indexRecord].FirstPgDf = 0;
+			}
+			else
+			{
+				context1.PdfTable.ToList()[indexRecord].FirstPgDf = 1;
+			}
+
 			foreach (var name in selectedNames)
 			{
 				types.Add(name.Type);
@@ -441,11 +505,16 @@
 
 				int i = 0;
 
+				int chosenIndex = wordDocs.IndexOf(wordDocs.Where(x => x.Alignment == -130392192).FirstOrDefault());
+
 				while (i < wordDocs.Count)
 				{
+					if (i == chosenIndex)
+						i += 1;
+
 					WordDoc wordDoc = wordDocs[i];
 
-					if (!wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
+					if ( (chosenIndex!=-1 && firstPageDefault==1 && i < chosenIndex) || !wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
 					{
 						wordDoc.Text = " " + wordDoc.Text.Trim();
 
@@ -496,7 +565,7 @@
 						}
 						state = 0;
 
-						
+
 						if (exemptNames.Any(x => x.Trim() == wordDoc.Text.Trim()))
 						{
 							if (exemptNames.Any(x => x == "Default"))
@@ -659,7 +728,10 @@
 				warning = "File Uploaded Successfully!";
 				exemptNames = new List<string>();
 				colorScheme = "text-warning";
+				jsRunTime.InvokeVoidAsync("changeCheck", "pgDefault", 1);
+				firstPageDefault = 1;
 				hide = "display:block";
+				hidePgCheck = "display:none";
 
 				try
 				{

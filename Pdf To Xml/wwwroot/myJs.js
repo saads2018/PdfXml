@@ -44,10 +44,21 @@ function resetSelectList(count,value) {
     }
 }
 
-function removeName(name)
+function changeCheck(id,cond)
 {
-    var checkbox = document.getElementById(name);
-    checkbox.checked = false;
+    var checkbox = document.getElementById(id);
+
+    if (cond == 0) {
+        checkbox.checked = false;
+    }
+    else if (cond == 1)
+    {
+        checkbox.checked = true;
+    }
+    else {
+        checkbox.click();
+    }
+
 }
 
 function getAlert(message)

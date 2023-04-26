@@ -185,7 +185,8 @@ namespace Pdf_To_Xml.Data.Migrations
                    savedTypes = table.Column<string>(type: "varchar(MAX)", nullable: true),
                    FileNames = table.Column<string>(type: "varchar(MAX)", nullable: true),
                    AddFile1 = table.Column<byte[]>(type: "varbinary(MAX)", nullable: true),
-                   AddFile2 = table.Column<byte[]>(type: "varbinary(MAX)", nullable: true)
+                   AddFile2 = table.Column<byte[]>(type: "varbinary(MAX)", nullable: true),
+                   FirstPgDf = table.Column<int>(type: "int", nullable: true)
                },
                 constraints: table =>
                 {
