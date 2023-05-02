@@ -43,7 +43,7 @@ namespace Pdf_To_Xml
 
             foreach (System.Collections.DictionaryEntry resource in resourceSet)
             {
-                if (text.Contains(resource.Value.ToString()))
+                if (text.Trim() == (resource.Value.ToString().Trim()))
                     isPresent = true;
             }
             return isPresent;
@@ -54,7 +54,7 @@ namespace Pdf_To_Xml
             bool valid = false;
             for(int i = 0;i<s.Length-1;i++)
             {
-                if ((char.IsDigit(s[i]) && char.IsLetter(s[i+1])) || (char.IsLetter(s[i]) && char.IsDigit(s[i + 1])))
+                if ((char.IsDigit(s[i]) && (char.IsLetter(s[i+1]) || s[i+1]=='’')) || ((char.IsLetter(s[i]) || s[i] == '’') && char.IsDigit(s[i + 1])))
                 {
                     valid = true;
                 }
@@ -171,7 +171,27 @@ namespace Pdf_To_Xml
                                         doc.Alignment = (int)Math.Round(textString.TopLeft[0]);
                                         
                                         doc.Type = "";
-                                        doc.Text = Discard(textString.Text).Trim();
+
+                                        doc.Text = textString.Text;
+
+                                        try
+                                        {
+                                            if (textString.Text.Contains('('))
+                                            {
+                                                while (!textString.Text.Contains(')'))
+                                                {
+                                                   x += 1;
+                                                   textString = location.TextLocationInfo[x];
+                                                   doc.Text += textString.Text;
+                                                }
+                                            }
+                                        }
+                                        catch
+                                        {
+
+                                        }
+
+                                        doc.Text = Discard(doc.Text).Trim();
 
                                         try
                                         {

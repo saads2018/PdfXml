@@ -118,45 +118,52 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="String1" xml:space="preserve">
-    <value>laughing</value>
+    <value>FADE TO</value>
   </data>
   <data name="String10" xml:space="preserve">
-    <value>beat</value>
+    <value>STOCK SHOT</value>
   </data>
   <data name="String11" xml:space="preserve">
-    <value>with a look to Dr. Cutler</value>
+    <value>TIME CUT</value>
   </data>
   <data name="String12" xml:space="preserve">
-    <value>to Vitti</value>
+    <value>WIPE TO</value>
   </data>
   <data name="String13" xml:space="preserve">
-    <value>into his walkie-talkie</value>
+    <value>SMASH CUT</value>
   </data>
   <data name="String14" xml:space="preserve">
-    <value>belting</value>
+    <value>MATCH CUT</value>
+  </data>
+  <data name="String15" xml:space="preserve">
+    <value>JUMP CUT</value>
+  </data>
+  <data name="String16" xml:space="preserve">
+    <value>FLASHBACK</value>
   </data>
   <data name="String2" xml:space="preserve">
-    <value>work colleague, 50s, watched the whole scene, sounds worried</value>
+    <value>CUT TO</value>
   </data>
   <data name="String3" xml:space="preserve">
-    <value>whispers</value>
+    <value>THE END</value>
   </data>
   <data name="String4" xml:space="preserve">
-    <value>singing, with appropriate dance moves</value>
+    <value>FADE IN</value>
   </data>
   <data name="String5" xml:space="preserve">
-    <value>nodding at Agent Cerrone</value>
+    <value>FADE OUT</value>
   </data>
   <data name="String6" xml:space="preserve">
-    <value>making a jerking motion</value>
+    <value>DISSOLVE TO</value>
   </data>
   <data name="String7" xml:space="preserve">
-    <value>to Agent Cerrone</value>
+    <value>FREEZE FRAME</value>
   </data>
   <data name="String8" xml:space="preserve">
-    <value>prompting</value>
+    <value>IRIS IN</value>
+    <comment>i</comment>
   </data>
   <data name="String9" xml:space="preserve">
-    <value>watching Vitti</value>
+    <value>IRIS OUT</value>
   </data>
 </root>

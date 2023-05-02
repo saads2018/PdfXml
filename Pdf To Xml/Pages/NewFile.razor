@@ -377,25 +377,14 @@
 			defaultName.Text="Default";
 			defaultName.Alignment = 0;
 
-			var exemptList = new List<string>();
-			exemptList.Add("FADE TO");
-			exemptList.Add("CUT TO");
-			exemptList.Add("THE END");
-			exemptList.Add("FADE IN");
-			exemptList.Add("FADE OUT");
-			exemptList.Add("DISSOLVE TO");
-			exemptList.Add("FREEZE FRAME");
-			exemptList.Add("IRIS IN");
-			exemptList.Add("IRIS OUT");
-			exemptList.Add("STOCK SHOT");
-			exemptList.Add("TIME CUT");
-			exemptList.Add("WIPE TO");
-			exemptList.Add("SMASH CUT");
-			exemptList.Add("MATCH CUT");
-			exemptList.Add("JUMP CUT");
-			exemptList.Add("FLASHBACK");
 
-			wordDocsTemp1.RemoveAll(x=> exemptList.Any(y=>x.Text.Contains(y)));
+			ResourceManager resourceManager = new ResourceManager("Pdf_To_Xml.Resources.DiscardTransitions", Assembly.GetExecutingAssembly());
+			ResourceSet resourceSet = resourceManager.GetResourceSet(System.Globalization.CultureInfo.CurrentCulture, true, true);
+
+			foreach (System.Collections.DictionaryEntry resource in resourceSet)
+			{
+				wordDocsTemp1.RemoveAll(x=> x.Text.Contains(resource.Value.ToString()));
+			}
 
 			wordDocsTemp1.Insert(0, defaultName);
 			namesList = wordDocsTemp1.GroupBy(x => x.Text).ToList();
@@ -554,15 +543,57 @@
 
 						XmlList.Add(word);
 
-						i += 1;
-						var firstAlign = i < wordDocs.Count ? wordDocs[i].Alignment : 0;
-
-						while (i < wordDocs.Count && wordDocs[i].Alignment == firstAlign)
+						try
 						{
-							wordDocs[i].Text = wordDocs[i].Text;
-							XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? wordDocs[i].Text : " " + wordDocs[i].Text;
-							i += 1;
+							if (wordDocs[i+1].Text.Contains('('))
+							{
+								i += 1;
+								var bracketText = wordDocs[i].Text;
+								while (!wordDocs[i].Text.Contains(')'))
+								{
+									i += 1;
+									bracketText += wordDocs[i].Text;
+								}
+								XmlList[XmlList.Count - 1].Text += bracketText;
+							}
 						}
+						catch
+						{
+
+						}
+
+						var firstAlign = (i+1) < wordDocs.Count ? wordDocs[i+1].Alignment : 0;
+
+						do
+						{
+							try
+							{
+								i += 1;
+								if(!(i<wordDocs.Count))
+								{
+									break;
+								}
+								else if (wordDocs[i].Text.Contains('('))
+								{
+									var tempBracketText = wordDocs[i].Text;
+									while (!wordDocs[i].Text.Contains(')'))
+									{
+										i += 1;
+										tempBracketText += wordDocs[i].Text;
+									}
+									XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? tempBracketText : " " + tempBracketText;
+									wordDocs[i].Alignment = firstAlign;
+								}
+								else if(wordDocs[i].Alignment==firstAlign)
+								{
+									XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? wordDocs[i].Text : " " + wordDocs[i].Text;
+								}
+							}
+							catch
+							{
+
+							}
+						}while (i < wordDocs.Count && wordDocs[i].Alignment == firstAlign) ;
 						state = 0;
 
 
