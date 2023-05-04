@@ -62,40 +62,44 @@ namespace Pdf_To_Xml
             return valid;
         }
 
-        private string Discard(string text)
+        private string Discard(string text, bool cond=true)
         {
             string storeText = text;
             int error = 0;
 
-            while (storeText.Contains('(')|| storeText.Contains(')'))
+            if(cond)
             {
-                try
+                while (storeText.Contains('(') || storeText.Contains(')'))
                 {
-                    if (!checkForNumLetters(getBracketString(storeText)) && !checkResxDiscard("Pdf_To_Xml.Resources.BracketDiscardExceptions", getBracketString(storeText)))
+                    try
                     {
-                        string val = "";
-                        if (storeText.Contains('(') && !storeText.Contains(')'))
-                            val = storeText.Substring(storeText.IndexOf('('));
-                        else if (storeText.Contains(')') && !storeText.Contains('('))
-                            val = storeText.Substring(0, storeText.IndexOf(')')+1);
-                        else
-                            val = storeText.Substring(storeText.IndexOf('('), storeText.IndexOf(')') - storeText.IndexOf('(') + 1);
-                        
-                        text = text.Replace(val, "");
-                    }
-                    var x = 1;
+                        if (!checkForNumLetters(getBracketString(storeText)) && !checkResxDiscard("Pdf_To_Xml.Resources.BracketDiscardExceptions", getBracketString(storeText)))
+                        {
+                            string val = "";
+                            if (storeText.Contains('(') && !storeText.Contains(')'))
+                                val = storeText.Substring(storeText.IndexOf('('));
+                            else if (storeText.Contains(')') && !storeText.Contains('('))
+                                val = storeText.Substring(0, storeText.IndexOf(')') + 1);
+                            else
+                                val = storeText.Substring(storeText.IndexOf('('), storeText.IndexOf(')') - storeText.IndexOf('(') + 1);
 
-                    if (!storeText.Contains(')'))
-                        storeText = "";
-                    else
-                        storeText = storeText.Substring(storeText.IndexOf(')') + 1);
-                }
-                catch(Exception ex)
-                {
-                    string msg = ex.ToString();
-                    break;
+                            text = text.Replace(val, "");
+                        }
+                        var x = 1;
+
+                        if (!storeText.Contains(')'))
+                            storeText = "";
+                        else
+                            storeText = storeText.Substring(storeText.IndexOf(')') + 1);
+                    }
+                    catch (Exception ex)
+                    {
+                        string msg = ex.ToString();
+                        break;
+                    }
                 }
             }
+           
 
             ResourceManager resourceManager = new ResourceManager("Pdf_To_Xml.Resources.DiscardString", Assembly.GetExecutingAssembly());
             ResourceSet resourceSet = resourceManager.GetResourceSet(System.Globalization.CultureInfo.CurrentCulture, true, true);
@@ -132,7 +136,7 @@ namespace Pdf_To_Xml
         }
 
 
-        public List<WordDoc> Advanced(PdfTable pdf, int cond)
+        public List<WordDoc> Advanced(PdfTable pdf, int cond, bool discardBrackets)
         {
             List<WordDoc> wordDocs = new List<WordDoc>();
             // 1. Opening the PDF file...
@@ -191,7 +195,7 @@ namespace Pdf_To_Xml
 
                                         }
 
-                                        doc.Text = Discard(doc.Text).Trim();
+                                        doc.Text = Discard(doc.Text,discardBrackets).Trim();
 
                                         try
                                         {

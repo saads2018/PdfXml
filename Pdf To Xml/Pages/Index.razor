@@ -49,33 +49,39 @@
 							<tbody>
 								@foreach(PdfTable pdf in Enumerable.Reverse(context1.PdfTable.ToList()).ToList())
 								{
-									<tr>
+							<tr>
 										<td><a href="" target="_self" @onclick="@(e=> ViewUserInfo(@pdf.UserName.Substring(0,pdf.UserName.IndexOf(':'))))">@pdf.UserName.Substring(0,pdf.UserName.IndexOf('@'))</a></td>
-										<td><a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1)</a></td>
+								
+								@if (context1.ExtraUserInfo.ToList().Where(x => x.UserName == pdf.UserName.Substring(0, pdf.UserName.IndexOf(':'))).FirstOrDefault().ShowFiles=="1")
+								{
 									<td>
-											@if (pdf.Xml != null)
-											{
-												<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
-													@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml")
-												</a>
-											}
+										<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@pdf.UserName.Substring(pdf.UserName.IndexOf(':') + 1)</a>
 									</td>
 									<td>
-											@if (pdf.AddFile1 != null)
-											{
-												<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
-													@pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':'))
-												</a>
-											}
-										</td>
-										<td>
-											@if (pdf.AddFile2 != null)
-											{
-												<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
-													@pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1)
-												</a>
-											}
-										</td>
+										@if (pdf.Xml != null)
+										{
+											<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
+												@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml")
+											</a>
+										}
+									</td>
+									<td>
+										@if (pdf.AddFile1 != null)
+										{
+											<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
+												@pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':'))
+											</a>
+										}
+									</td>
+									<td>
+										@if (pdf.AddFile2 != null)
+										{
+											<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
+												@pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1)
+											</a>
+										}
+									</td>
+								}
 									</tr>
 								}	
 							</tbody>
@@ -108,14 +114,21 @@
 		try
 		{
 			var info = context1.ExtraUserInfo.ToList().Where(x => x.UserName == UserName).FirstOrDefault();
-			if(info!=null)
+			if(info.Name!=null)
 			{
 				Name = info.Name;
-				About = info.About;
 			}
 			else
 			{
 				Name = "Not Specified Yet!";
+			}
+
+			if (info.About != null)
+			{
+				About = info.About;
+			}
+			else
+			{
 				About = "Not Specified Yet!";
 			}
 			showUserInfo = "display:block";

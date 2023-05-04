@@ -132,4 +132,7 @@
   <data name="String5" xml:space="preserve">
     <value>Sleepy</value>
   </data>
+  <data name="String6" xml:space="preserve">
+    <value>Default</value>
+  </data>
 </root>

@@ -58,6 +58,7 @@ namespace Pdf_To_Xml.Data.Migrations
                     UserName = table.Column<string>(maxLength: 256, nullable: false),
                     Name = table.Column<string>(maxLength: 64, nullable: true),
                     About = table.Column<string>(maxLength: 2000, nullable: true),
+                    ShowFiles = table.Column<string>(maxLength: 256, nullable: true)
                 },
                 constraints: table =>
                 {

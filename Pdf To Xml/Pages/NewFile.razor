@@ -19,6 +19,12 @@
 	<Authorized>
 		<h1>File</h1>
 
+		<div>
+			<input type="checkbox" @onclick="@(e=>showOnHomePage())" id="pdfShow" name="pdfShow" />
+			<label onclick="changeCheck('pdfShow',2)">Show Files On HomePage</label>
+		</div>
+
+		<br />
 		<label>Only PDF File (Max - 2MB)</label>
 
 		<div class="form-floating mt-3">
@@ -27,8 +33,9 @@
 		</div>
 		<span class="@colorScheme">@warning</span>
 		<div class="form-floating">
-			<a href="" class="mt-5" @onclick="@(e=>Download())">@fileName</a>
+			<a href="" id="pdfFile" class="mt-5" @onclick="@(e=>Download())">@fileName</a>
 		</div>
+
 		<div style="@hide" class="mt-2">
 		<label class="mt-3">You can add two addtional files of max 2MB each!</label>
 		<div class="form-floating mt-1">
@@ -38,10 +45,10 @@
 			<span class="@colorScheme1">@warning1</span>
 			<br />
 			<div class="form-floating">
-				<a href="" class="mt-5" @onclick="@(e=>Download("1"))">@fileName1</a>
+				<a href="" id="addFile1" class="mt-5" @onclick="@(e=>Download("1"))">@fileName1</a>
 			</div>
 			<div class="form-floating">
-				<a href="" class="mt-5" @onclick="@(e=>Download("2"))">@fileName2</a>
+				<a href="" id="addFile2" class="mt-5" @onclick="@(e=>Download("2"))">@fileName2</a>
 			</div>
 
 			<br/>
@@ -91,6 +98,8 @@
 
 
 @code{
+	public bool DISCARD_BRACKETS = false;
+
 	public string loader;
 	public int firstPageDefault;
 	public string hideSend;
@@ -162,50 +171,76 @@
 
 		if (name != null)
 		{
+
+			var extraUserInfoRecord = context1.ExtraUserInfo.ToList().Where(x => x.UserName == name).FirstOrDefault();
+
+			if (extraUserInfoRecord == null)
+			{
+				ExtraUserInfo extraUserInfo = new ExtraUserInfo();
+				extraUserInfo.UserName = name;
+				context1.ExtraUserInfo.Add(extraUserInfo);
+				context1.SaveChanges();
+			}
+
 			var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).ToList();
 			if (pdfRecord.FirstOrDefault() != null)
 			{
-				warning = "File Uploaded Successfully!";
-				colorScheme = "text-warning";
-				hide = "display:block";
-				fileName = pdfRecord.LastOrDefault().UserName.Substring(pdfRecord.LastOrDefault().UserName.IndexOf(":") + 1);
-
-				if (!String.IsNullOrWhiteSpace(pdfRecord.LastOrDefault().savedTypes))
+				try
 				{
-					if(pdfRecord.LastOrDefault().FirstPgDf==0)
-					{
-						firstPageDefault=0;
-					}
-
-					getNameList(pdfRecord.LastOrDefault());
-					List<string> getTypes = new List<string>();
-
-					if(pdfRecord.LastOrDefault().savedTypes.Contains(":"))
-					{
-						getTypes = pdfRecord.LastOrDefault().savedTypes.Substring(0, pdfRecord.LastOrDefault().savedTypes.IndexOf(":")).Split(',').ToList();
-						exemptNames = pdfRecord.LastOrDefault().savedTypes.Substring(pdfRecord.LastOrDefault().savedTypes.IndexOf(":")+1).Split('=').ToList();
-					}
-					else
-						getTypes = pdfRecord.LastOrDefault().savedTypes.Split(',').ToList();
-
-					for(int i =0;i<selectedNames.Count;i++)
-					{
-						selectedNames[i].Type = getTypes[i];
-					}
+					warning = "File Uploaded Successfully!";
+					colorScheme = "text-warning";
+					hide = "display:block";
+					fileName = pdfRecord.LastOrDefault().UserName.Substring(pdfRecord.LastOrDefault().UserName.IndexOf(":") + 1);
 					indexRecord = context1.PdfTable.ToList().IndexOf(pdfRecord.LastOrDefault());
-					hideTable = "display:block";
+
+					if (!String.IsNullOrWhiteSpace(pdfRecord.LastOrDefault().savedTypes))
+					{
+						if (pdfRecord.LastOrDefault().FirstPgDf == 0)
+						{
+							firstPageDefault = 0;
+						}
+
+						getNameList(pdfRecord.LastOrDefault());
+						List<string> getTypes = new List<string>();
+
+						if (pdfRecord.LastOrDefault().savedTypes.Contains(":"))
+						{
+							getTypes = pdfRecord.LastOrDefault().savedTypes.Substring(0, pdfRecord.LastOrDefault().savedTypes.IndexOf(":")).Split(',').ToList();
+							exemptNames = pdfRecord.LastOrDefault().savedTypes.Substring(pdfRecord.LastOrDefault().savedTypes.IndexOf(":") + 1).Split('=').ToList();
+						}
+						else
+							getTypes = pdfRecord.LastOrDefault().savedTypes.Split(',').ToList();
+
+						for (int i = 0; i < selectedNames.Count; i++)
+						{
+							selectedNames[i].Type = getTypes[i];
+						}
+						hideTable = "display:block";
+
+					}
+				}
+				catch
+				{
 
 				}
 
-				if(context1.PdfTable.Where(x=>x.UserName==name+":"+fileName).FirstOrDefault().AddFile1!=null)
+				try
 				{
-					fileName1 = pdfRecord.LastOrDefault().FileNames.Substring(0,pdfRecord.LastOrDefault().FileNames.IndexOf(":"));
-					warning1 = "File Uploaded Successfully!";
-					colorScheme1 = "text-warning";
+					if (pdfRecord.LastOrDefault().AddFile1 != null)
+					{
+						fileName1 = pdfRecord.LastOrDefault().FileNames.Substring(0, pdfRecord.LastOrDefault().FileNames.IndexOf(":"));
+						warning1 = "One File Uploaded Successfully!";
+						colorScheme1 = "text-warning";
+					}
+					if (pdfRecord.LastOrDefault().AddFile2 != null)
+					{
+						fileName2 = pdfRecord.LastOrDefault().FileNames.Substring(pdfRecord.LastOrDefault().FileNames.IndexOf(":") + 1);
+						warning1 = "Two Files Uploaded Successfully!";
+					}
 				}
-				if (context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile2 != null)
+				catch
 				{
-					fileName2 = pdfRecord.LastOrDefault().FileNames.Substring(pdfRecord.LastOrDefault().FileNames.IndexOf(":")+1);
+
 				}
 			}
 		}
@@ -216,11 +251,23 @@
 
 	protected override Task OnAfterRenderAsync(bool firstRender)
 	{
-		foreach(var name in exemptNames)
-			jsRunTime.InvokeVoidAsync("changeCheck", name,0);
+		var user = authenticate.GetAuthenticationStateAsync();
+		var name = user.Result.User.Identity.Name;
+
+		foreach(var name1 in exemptNames)
+			jsRunTime.InvokeVoidAsync("changeCheck", name1,0);
 
 		if(firstPageDefault==0)
 			jsRunTime.InvokeVoidAsync("changeCheck", "pgDefault",0);
+
+		try
+		{
+			jsRunTime.InvokeVoidAsync("changeCheck", "pdfShow", context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles);
+		}
+		catch
+		{
+
+		}
 
 		return base.OnAfterRenderAsync(firstRender);
 	}
@@ -240,6 +287,16 @@
 			else
 				hidePgCheck = "display:none";
 		}
+	}
+
+	public async Task showOnHomePage()
+	{
+		var user = authenticate.GetAuthenticationStateAsync();
+		var name = user.Result.User.Identity.Name;
+		string show = context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles;
+
+		context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles = show=="0"? "1":"0";
+		context1.SaveChanges();
 	}
 
 	public void selectType(int index, string value)
@@ -336,7 +393,7 @@
 			List<string> lines = new List<string>();
 
 			BasicTextExtraction basicTextExtraction = new BasicTextExtraction();
-			wordDocs = basicTextExtraction.Advanced(pdfRecord,firstPageDefault);
+			wordDocs = basicTextExtraction.Advanced(pdfRecord,firstPageDefault,DISCARD_BRACKETS);
 
 			wordDocsTemp1 = new List<WordDoc>();
 			var grouped1 = wordDocs.GroupBy(i => i.Alignment).Where(x => x.Key.Value < 130 || x.Key.Value > 360).OrderByDescending(z => z.Count()).ToList();
@@ -529,6 +586,7 @@
 					}
 					else if (wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
 					{
+						string bracketList = "";
 						WordDoc word = new WordDoc();
 						var v = wordDoc.Text.ToLower();
 
@@ -548,11 +606,17 @@
 							if (wordDocs[i+1].Text.Contains('('))
 							{
 								i += 1;
-								var bracketText = wordDocs[i].Text;
+								var bracketText = wordDocs[i].Text.TrimEnd();
 								while (!wordDocs[i].Text.Contains(')'))
 								{
 									i += 1;
-									bracketText += wordDocs[i].Text;
+									bracketText += " " + wordDocs[i].Text.TrimStart();
+								}
+
+								if(!DISCARD_BRACKETS)
+								{
+									bracketList+=bracketText.Substring(bracketText.IndexOf("("), bracketText.IndexOf(")") - bracketText.IndexOf("(") + 1) + " ";
+									bracketText = bracketText.Replace(bracketText.Substring(bracketText.IndexOf("("), bracketText.IndexOf(")") - bracketText.IndexOf("(") + 1),"");
 								}
 								XmlList[XmlList.Count - 1].Text += bracketText;
 							}
@@ -575,12 +639,19 @@
 								}
 								else if (wordDocs[i].Text.Contains('('))
 								{
-									var tempBracketText = wordDocs[i].Text;
+									var tempBracketText = wordDocs[i].Text.TrimEnd();
 									while (!wordDocs[i].Text.Contains(')'))
 									{
 										i += 1;
-										tempBracketText += wordDocs[i].Text;
+										tempBracketText += " " + wordDocs[i].Text.TrimStart();
 									}
+
+									if(!DISCARD_BRACKETS)
+									{
+										bracketList += tempBracketText.Substring(tempBracketText.IndexOf("("), tempBracketText.IndexOf(")") - tempBracketText.IndexOf("(") + 1)+" ";
+										tempBracketText = tempBracketText.Replace(tempBracketText.Substring(tempBracketText.IndexOf("("), tempBracketText.IndexOf(")") - tempBracketText.IndexOf("(") + 1), "");
+									}
+
 									XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? tempBracketText : " " + tempBracketText;
 									wordDocs[i].Alignment = firstAlign;
 								}
@@ -597,6 +668,7 @@
 						state = 0;
 
 
+						var nameDefault = selectedNames.Where(x => x.Text.Trim() == "Default").FirstOrDefault();
 						if (exemptNames.Any(x => x.Trim() == wordDoc.Text.Trim()))
 						{
 							if (exemptNames.Any(x => x == "Default"))
@@ -605,13 +677,21 @@
 							}
 							else
 							{
-								var nameDefault = selectedNames.Where(x => x.Text.Trim() == "Default").FirstOrDefault();
 								XmlList[XmlList.Count - 1].Type = nameDefault.Type.ToLower().Trim();
 
 								var text = XmlList[XmlList.Count - 1].Text;
 								XmlList[XmlList.Count - 1].Text = wordDoc.Text.Trim() + " " + text;
 							}
 						}
+
+						if(!DISCARD_BRACKETS)
+						{
+							WordDoc wordDocBracket = new WordDoc();
+							wordDocBracket.Text = bracketList.TrimEnd();
+							wordDocBracket.Type = nameDefault.Type.ToLower().Trim();
+							XmlList.Add(wordDocBracket);
+						}
+
 					}
 
 				}
@@ -715,7 +795,7 @@
 			var user = authenticate.GetAuthenticationStateAsync();
 			var name = user.Result.User.Identity.Name;
 
-			if (context1.PdfTable.Where(x => x.UserName == (name + ":" + fileName)).FirstOrDefault().AddFile1 != null && context1.PdfTable.Where(x => x.UserName == (name + ":" + fileName)).FirstOrDefault().AddFile2 != null)
+			if (context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).LastOrDefault().AddFile1 != null && context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).LastOrDefault().AddFile2 != null)
 			{
 				warning1 = "You Can't Upload More Than Two Files!";
 				colorScheme1 = "text-danger";
@@ -732,7 +812,7 @@
 				globalAddFiles = files;
 			}
 		}
-		catch
+		catch(Exception ex)
 		{
 			jsRunTime.InvokeVoidAsync("getAlert", "Sorry An Error Occured, Please Try Again!");
 			return;
@@ -783,6 +863,9 @@
 					storePdf.Pdf = pdf;
 					context1.PdfTable.Add(storePdf);
 					context1.SaveChanges();
+
+					var pdfRecord = context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(":")) == name).ToList();
+					indexRecord = context1.PdfTable.ToList().IndexOf(pdfRecord.LastOrDefault());
 				}
 			}
 		}
@@ -801,20 +884,21 @@
 			if (warning1 == "File Chosen Successfully!" && globalAddFiles != null)
 			{
 				byte[] pdf = new byte[globalAddFiles.FirstOrDefault().Size];
-				warning1 = "File Uploaded Successfully!";
 				colorScheme1 = "text-warning";
 				var user = authenticate.GetAuthenticationStateAsync();
 				var name = user.Result.User.Identity.Name;
-
+				
 				try
 				{
-					if (context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile1 == null)
+					if (context1.PdfTable.ToList().Where(x => x.UserName == name + ":" + fileName).LastOrDefault().AddFile1 == null)
 					{
 						fileName1 = globalAddFiles.FirstOrDefault().Name;
+						warning1 = "One File Uploaded Successfully!";
 					}
 					else
 					{
 						fileName2 = globalAddFiles.FirstOrDefault().Name;
+						warning1 = "Two Files Uploaded Successfully!";
 					}
 
 					pdf = await FileSender(globalAddFiles.FirstOrDefault());
@@ -827,15 +911,15 @@
 				{
 					Conversion(pdf);
 
-					if (context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile1==null)
+					if (context1.PdfTable.ToList().Where(x => x.UserName == name + ":" + fileName).LastOrDefault().AddFile1==null)
 					{
-						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile1 = pdf;
-						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().FileNames = globalAddFiles.FirstOrDefault().Name+":";
+						context1.PdfTable.ToList().Where(x => x.UserName == name + ":" + fileName).LastOrDefault().AddFile1 = pdf;
+						context1.PdfTable.ToList().Where(x => x.UserName == name + ":" + fileName).LastOrDefault().FileNames = globalAddFiles.FirstOrDefault().Name+":";
 					}
 					else
 					{
-						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().AddFile2 = pdf;
-						context1.PdfTable.Where(x => x.UserName == name + ":" + fileName).FirstOrDefault().FileNames += globalAddFiles.FirstOrDefault().Name;
+						context1.PdfTable.ToList().Where(x => x.UserName == name + ":" + fileName).LastOrDefault().AddFile2 = pdf;
+						context1.PdfTable.ToList().Where(x => x.UserName == name + ":" + fileName).LastOrDefault().FileNames += globalAddFiles.FirstOrDefault().Name;
 					}
 					context1.SaveChanges();
 				}

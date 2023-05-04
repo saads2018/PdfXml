@@ -61,6 +61,11 @@ function changeCheck(id,cond)
 
 }
 
+function hideFiles(id) {
+    var file = document.getElementById(id);
+    file.style.display = "none";
+}
+
 function getAlert(message)
 {
     alert(message);
