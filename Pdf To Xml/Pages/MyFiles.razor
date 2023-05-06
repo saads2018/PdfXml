@@ -14,6 +14,11 @@
 	<Authorized>
 		<h3>My Files</h3>
 
+		<div>
+			<input type="checkbox" @onclick="@(e=>showOnHomePage())" id="pdfShow" name="pdfShow" />
+			<label onclick="changeCheck('pdfShow',2)">Show Files On HomePage</label>
+		</div>
+		<br />
 		<button @onclick="@(e=> deleteFiles())" style="margin-top:10px;" class="btn btn-danger">Delete</button>
 		<table style="margin-top:15px;">
 			<tbody>
@@ -34,14 +39,14 @@
 									<tr>
 										<td>
 											<input type="checkbox" value="@pdf.Id" id="pdfId" @onclick="@(e=>checkPdf(pdf.Id))" name="pdfName"/>
-											<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1)</a>
+											<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1))</a>
 											</td>
 										<td>
 											@if (pdf.Xml != null)
 											{
 												<input @onclick="@(e=>checkXml(pdf.Id))" type="checkbox" value="@pdf.Id" id="xmlId" name="xmlName" />
 												<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
-													@pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml")
+													@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml"))
 												</a>
 											}
 										</td>
@@ -50,7 +55,7 @@
 											{
 												<input @onclick="@(e=>checkaddFile1(pdf.Id))" type="checkbox" value="@pdf.Id" id="addFile1Id" name="addFile1Name" />
 												<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
-													@pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':'))
+													@convertString(pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':')))
 												</a>
 											}
 										</td>
@@ -59,7 +64,7 @@
 											{
 												<input @onclick="@(e=>checkaddFile2(pdf.Id))" type="checkbox" value="@pdf.Id" id="addFile2Id" name="addFile2Name" />
 												<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
-													@pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1)
+													@convertString(pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1))
 												</a>
 											}
 										</td>
@@ -86,14 +91,14 @@
 	public List<string> xmlChecked;
 	public List<string> addFile1Checked;
 	public List<string> addFile2Checked;
-
+	public string name;
 
 	protected override Task OnInitializedAsync()
 	{
 		context1 = dbContext;
 		context1.Database.EnsureCreated();
 		var user = authenticate.GetAuthenticationStateAsync();
-		var name = user.Result.User.Identity.Name;
+		name = user.Result.User.Identity.Name;
 		DownloadRunning = false;
 		pdfChecked = new List<string>();
 		xmlChecked = new List<string>();
@@ -103,13 +108,41 @@
 		return base.OnInitializedAsync();
 	}
 
+	protected override Task OnAfterRenderAsync(bool firstRender)
+	{
+		try
+		{
+			jsRunTime.InvokeVoidAsync("changeCheck", "pdfShow", context1.ExtraUserInfo.ToList().Where(x => x.UserName == name).FirstOrDefault().ShowFiles);
+		}
+		catch
+		{
 
+		}
+
+		return base.OnAfterRenderAsync(firstRender);
+	}
+
+	private string convertString(string s)
+	{
+		if(s.Length>18)
+			s = s.Substring(0, 17) + "...";
+
+		return s;
+	}
 	private async Task checkPdf(int id)
 	{
 		if (pdfChecked.Where(x => x == id.ToString()).FirstOrDefault() == null)
 			pdfChecked.Add(id.ToString());
 		else
 			pdfChecked.Remove(pdfChecked.Where(x => x == id.ToString()).FirstOrDefault());
+	}
+
+	public async Task showOnHomePage()
+	{
+		string show = context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles;
+
+		context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles = show=="0"? "1":"0";
+		context1.SaveChanges();
 	}
 
 	private async Task checkXml(int id)

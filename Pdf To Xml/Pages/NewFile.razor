@@ -19,21 +19,17 @@
 	<Authorized>
 		<h1>File</h1>
 
-		<div>
-			<input type="checkbox" @onclick="@(e=>showOnHomePage())" id="pdfShow" name="pdfShow" />
-			<label onclick="changeCheck('pdfShow',2)">Show Files On HomePage</label>
-		</div>
-
 		<br />
 		<label>Only PDF File (Max - 2MB)</label>
 
 		<div class="form-floating mt-3">
 			<BlazorInputFile.InputFile value="@fileValue"  accept="application/pdf"  OnChange="@(e=>HandleFile(e))" />
 			<button @onclick="@(e=>Upload())">Upload</button>
-		</div>
+		</div
+
 		<span class="@colorScheme">@warning</span>
 		<div class="form-floating">
-			<a href="" id="pdfFile" class="mt-5" @onclick="@(e=>Download())">@fileName</a>
+			<a href="" id="pdfFile" class="mt-5" @onclick="@(e=>Download())">@convertString(fileName)</a>
 		</div>
 
 		<div style="@hide" class="mt-2">
@@ -45,16 +41,16 @@
 			<span class="@colorScheme1">@warning1</span>
 			<br />
 			<div class="form-floating">
-				<a href="" id="addFile1" class="mt-5" @onclick="@(e=>Download("1"))">@fileName1</a>
+				<a href="" id="addFile1" class="mt-5" @onclick="@(e=>Download("1"))">@convertString(fileName1)</a>
 			</div>
 			<div class="form-floating">
-				<a href="" id="addFile2" class="mt-5" @onclick="@(e=>Download("2"))">@fileName2</a>
+				<a href="" id="addFile2" class="mt-5" @onclick="@(e=>Download("2"))">@convertString(fileName2)</a>
 			</div>
 
 			<br/>
 			<div>
 			<input type="checkbox" onclick="@checkFirstPgDefault" id="pgDefault"  name="pgDefault" checked/>
-			<label onclick="changeCheck('pgDefault',2)">Place the first page under the type default</label>
+			<label onclick="changeCheck('pgDefault',2)">Place the first page under default's type</label>
 			</div>
 			<span style="@hidePgCheck" class="text-warning">You Need To Press Extract To See The Changes!</span>
 
@@ -98,7 +94,7 @@
 
 
 @code{
-	public bool DISCARD_BRACKETS = false;
+	public bool DISCARD_BRACKETS = true;
 
 	public string loader;
 	public int firstPageDefault;
@@ -260,18 +256,16 @@
 		if(firstPageDefault==0)
 			jsRunTime.InvokeVoidAsync("changeCheck", "pgDefault",0);
 
-		try
-		{
-			jsRunTime.InvokeVoidAsync("changeCheck", "pdfShow", context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles);
-		}
-		catch
-		{
-
-		}
-
 		return base.OnAfterRenderAsync(firstRender);
 	}
 
+	private string convertString(string s)
+	{
+		if(s.Length>45)
+			s = s.Substring(0, 45) + "...";
+
+		return s;
+	}
 	public async Task checkFirstPgDefault()
 	{
 		firstPageDefault = firstPageDefault == 0 ? 1 : 0;
@@ -287,16 +281,6 @@
 			else
 				hidePgCheck = "display:none";
 		}
-	}
-
-	public async Task showOnHomePage()
-	{
-		var user = authenticate.GetAuthenticationStateAsync();
-		var name = user.Result.User.Identity.Name;
-		string show = context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles;
-
-		context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles = show=="0"? "1":"0";
-		context1.SaveChanges();
 	}
 
 	public void selectType(int index, string value)
