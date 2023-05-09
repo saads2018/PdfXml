@@ -14,5 +14,7 @@ namespace Pdf_To_Xml.Models
         public byte[]? AddFile2 { get; set; }
         public string? savedTypes { get; set; }
         public Nullable<int> FirstPgDf { get; set; }
+        public string? ShowFiles { get; set; }
+
     }
 }

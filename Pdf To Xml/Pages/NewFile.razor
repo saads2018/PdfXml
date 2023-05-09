@@ -60,15 +60,15 @@
 
 		<div style="@hideTable">
 			<table class="table table-bordered table-responsive mt-2">
-				@foreach(var name in namesList)
+				@foreach(var name10 in selectedNames)
 				{
 					<tr>
-						<td>@name.Key</td>
+						<td>@name10.Text</td>
 						<td>
-							<input @onclick="@(e=>checkName(name.Key))" type="checkbox" value="@name.Key" id="@name.Key" checked name="extractedName" />
+							<input @onclick="@(e=>checkName(name10.Text))" type="checkbox" value="@name10.Text" id="@name10.Text" checked name="extractedName" />
 						</td>
 						<td>
-							<select id="mySelect @namesList.IndexOf(name)" value="@selectedNames.Where(x=>x.Text==name.Key).FirstOrDefault().Type" @onchange="@(e=>selectType(namesList.IndexOf(name),e.Value.ToString()))" >
+							<select id="mySelect @selectedNames.IndexOf(name10)" value="@selectedNames.Where(x=>x.Text==name10.Text).FirstOrDefault().Type" @onchange="@(e=>selectType(selectedNames.IndexOf(name10),e.Value.ToString()))" >
 								@foreach (var type in typesList)
 								{
 									<option value="@type">@type</option>
@@ -94,7 +94,7 @@
 
 
 @code{
-	public bool DISCARD_BRACKETS = true;
+	public bool DISCARD_BRACKETS = false;
 
 	public string loader;
 	public int firstPageDefault;
@@ -439,6 +439,18 @@
 				type.Type = "";
 				selectedNames.Add(type);
 			}
+
+			foreach(var name1 in selectedNames)
+			{
+				if (name1.Text.Contains("("))
+					{
+						while(name1.Text.Contains("("))
+							{
+								name1.Text = name1.Text.Replace(name1.Text.Substring(name1.Text.IndexOf("("), name1.Text.IndexOf(")") - name1.Text.IndexOf("(") + 1), "");
+							}
+					}
+			}
+
 		}
 		catch (Exception ex)
 		{
@@ -570,11 +582,23 @@
 					}
 					else if (wordDocsTemp1.Any(u => u.Alignment == wordDoc.Alignment))
 					{
-						string bracketList = "";
 						WordDoc word = new WordDoc();
+						List<WordDoc> sNames = new List<WordDoc>();
+						foreach(var name1 in selectedNames)
+						{
+							if (name1.Text.Contains("("))
+							{
+								while(name1.Text.Contains("("))
+								{
+									name1.Text = name1.Text.Replace(name1.Text.Substring(name1.Text.IndexOf("("), name1.Text.IndexOf(")") - name1.Text.IndexOf("(") + 1), "");
+								}
+							}
+						}
 						var v = wordDoc.Text.ToLower();
-
+						var nameDefault1 = selectedNames.Where(x => x.Text.Trim() == "Default").FirstOrDefault();
 						var extractedName = selectedNames.Where(x => v.Contains(x.Text.ToLower().Trim())).FirstOrDefault();
+						
+						wordDocs[i].Text = wordDocs[i].Text.Replace(extractedName.Text,"");
 
 						if (extractedName == null)
 							word.Type = "unknown";
@@ -599,9 +623,13 @@
 
 								if(!DISCARD_BRACKETS)
 								{
-									bracketList+=bracketText.Substring(bracketText.IndexOf("("), bracketText.IndexOf(")") - bracketText.IndexOf("(") + 1) + " ";
+									WordDoc wordDoc1 =new WordDoc();
+									wordDoc1.Text = bracketText.Substring(bracketText.IndexOf("(")+1, bracketText.IndexOf(")") - bracketText.IndexOf("(")-1) + " ";
+									wordDoc1.Text = wordDoc1.Text.Trim();
+									wordDoc1.Type =		nameDefault1.Type.ToLower().Trim();
+									XmlList.Insert(XmlList.Count - 1, wordDoc1);
 									bracketText = bracketText.Replace(bracketText.Substring(bracketText.IndexOf("("), bracketText.IndexOf(")") - bracketText.IndexOf("(") + 1),"");
-								}
+								}															
 								XmlList[XmlList.Count - 1].Text += bracketText;
 							}
 						}
@@ -632,11 +660,19 @@
 
 									if(!DISCARD_BRACKETS)
 									{
-										bracketList += tempBracketText.Substring(tempBracketText.IndexOf("("), tempBracketText.IndexOf(")") - tempBracketText.IndexOf("(") + 1)+" ";
+										WordDoc wordDoc1 =new WordDoc();
+										wordDoc1.Text = tempBracketText.Substring(tempBracketText.IndexOf("(")+1, tempBracketText.IndexOf(")") - tempBracketText.IndexOf("(")-1) + " ";
+										wordDoc1.Text = wordDoc1.Text.Trim();
+										wordDoc1.Type = nameDefault1.Type.ToLower().Trim();
+										XmlList.Add(wordDoc1);
+
+										WordDoc wordDoc2 =new WordDoc();
+										wordDoc2.Type = extractedName.Type.ToLower().Trim();
+										XmlList.Add(wordDoc2);
 										tempBracketText = tempBracketText.Replace(tempBracketText.Substring(tempBracketText.IndexOf("("), tempBracketText.IndexOf(")") - tempBracketText.IndexOf("(") + 1), "");
 									}
 
-									XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? tempBracketText : " " + tempBracketText;
+									//XmlList[XmlList.Count - 1].Text += XmlList[XmlList.Count - 1].Text == "" ? tempBracketText : " " + tempBracketText;
 									wordDocs[i].Alignment = firstAlign;
 								}
 								else if(wordDocs[i].Alignment==firstAlign)
@@ -668,14 +704,6 @@
 							}
 						}
 
-						if(!DISCARD_BRACKETS)
-						{
-							WordDoc wordDocBracket = new WordDoc();
-							wordDocBracket.Text = bracketList.TrimEnd();
-							wordDocBracket.Type = nameDefault.Type.ToLower().Trim();
-							XmlList.Add(wordDocBracket);
-						}
-
 					}
 
 				}
@@ -687,7 +715,9 @@
 				XmlWriterSettings settings = new XmlWriterSettings();
 				settings.Indent = true;
 
-
+				XmlList.RemoveAll(x => String.IsNullOrWhiteSpace(x.Text));
+				foreach (var x in XmlList)
+					x.Text = x.Text.Trim();
 
 				using (MemoryStream ms = new MemoryStream())
 				{
@@ -845,6 +875,7 @@
 					PdfTable storePdf = new PdfTable();
 					storePdf.UserName = name + ":" + globalFiles.FirstOrDefault().Name;
 					storePdf.Pdf = pdf;
+					storePdf.ShowFiles = "Pdf1Xml1Add21Add31";
 					context1.PdfTable.Add(storePdf);
 					context1.SaveChanges();
 

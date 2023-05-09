@@ -13,12 +13,6 @@
 <AuthorizeView>
 	<Authorized>
 		<h3>My Files</h3>
-
-		<div>
-			<input type="checkbox" @onclick="@(e=>showOnHomePage())" id="pdfShow" name="pdfShow" />
-			<label onclick="changeCheck('pdfShow',2)">Show Files On HomePage</label>
-		</div>
-		<br />
 		<button @onclick="@(e=> deleteFiles())" style="margin-top:10px;" class="btn btn-danger">Delete</button>
 		<table style="margin-top:15px;">
 			<tbody>
@@ -36,11 +30,14 @@
 							<tbody>
 								@foreach (PdfTable pdf in Enumerable.Reverse(context1.PdfTable.ToList().Where(x => x.UserName.Substring(0, x.UserName.IndexOf(':')) == context.User.Identity.Name)).ToList())
 								{
-									<tr>
+									<tr style="margin-top:30%; height:60px;">
 										<td>
-											<input type="checkbox" value="@pdf.Id" id="pdfId" @onclick="@(e=>checkPdf(pdf.Id))" name="pdfName"/>
+											<input type="checkbox" value="@pdf.Id" id="pdfId" @onclick="@(e=>checkPdf(pdf.Id))" name="pdfName" />
 											<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1))</a>
-											</td>
+											<br>
+											<input type="checkbox" value="@pdf.Id" id="@pdf.Id+pdfId" @onclick="@(e=>showOnHomePage(pdf.Id+"+pdfId"))" name="pdfName" />
+											<label onclick="changeCheck(@pdf.Id+'+pdfId',2)">Show</label>
+										</td>
 										<td>
 											@if (pdf.Xml != null)
 											{
@@ -48,6 +45,9 @@
 												<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
 													@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml"))
 												</a>
+												<br>
+												<input type="checkbox" value="@pdf.Id" id="@pdf.Id+xml" @onclick="@(e=>showOnHomePage(pdf.Id+"+xml"))" name="pdfName" />
+											<label onclick="changeCheck(@pdf.Id+'+xml',2)">Show</label>
 											}
 										</td>
 										<td>
@@ -57,6 +57,9 @@
 												<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
 													@convertString(pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':')))
 												</a>
+												<br>
+												<input type="checkbox" value="@pdf.Id" id="@pdf.Id+add1" @onclick="@(e=>showOnHomePage(pdf.Id+"+add1"))" name="pdfName" />
+												<label onclick="changeCheck(@pdf.Id+'+add1',2)">Show</label>
 											}
 										</td>
 										<td>
@@ -66,6 +69,9 @@
 												<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
 													@convertString(pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1))
 												</a>
+												<br>
+												<input type="checkbox" value="@pdf.Id" id="@pdf.Id+add2" @onclick="@(e=>showOnHomePage(pdf.Id+"+add2"))" name="pdfName" />
+												<label onclick="changeCheck(@pdf.Id+'+add2',2)">Show</label>
 											}
 										</td>
 									</tr>
@@ -112,7 +118,13 @@
 	{
 		try
 		{
-			jsRunTime.InvokeVoidAsync("changeCheck", "pdfShow", context1.ExtraUserInfo.ToList().Where(x => x.UserName == name).FirstOrDefault().ShowFiles);
+			foreach(var pdf in context1.PdfTable.ToList())
+			{
+				jsRunTime.InvokeVoidAsync("changeCheck", pdf.Id+"+pdfId", pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("f")+1,1));
+				jsRunTime.InvokeVoidAsync("changeCheck", pdf.Id + "+xml", pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("l") + 1, 1));
+				jsRunTime.InvokeVoidAsync("changeCheck", pdf.Id+"+add1", pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("2")+1,1));
+				jsRunTime.InvokeVoidAsync("changeCheck", pdf.Id+"+add2", pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("3")+1,1));
+			}
 		}
 		catch
 		{
@@ -124,8 +136,8 @@
 
 	private string convertString(string s)
 	{
-		if(s.Length>18)
-			s = s.Substring(0, 17) + "...";
+		if(s.Length>15)
+			s = s.Substring(0, 14) + "...";
 
 		return s;
 	}
@@ -137,11 +149,41 @@
 			pdfChecked.Remove(pdfChecked.Where(x => x == id.ToString()).FirstOrDefault());
 	}
 
-	public async Task showOnHomePage()
+	public async Task showOnHomePage(string id)
 	{
-		string show = context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles;
+		int extractId = Int32.Parse(id.Substring(0, id.IndexOf('+')));
+		string show = context1.PdfTable.ToList().Where(x => x.Id == extractId).FirstOrDefault().ShowFiles;
 
-		context1.ExtraUserInfo.ToList().Where(x=>x.UserName==name).FirstOrDefault().ShowFiles = show=="0"? "1":"0";
+		if (id.Contains("pdfId"))
+		{
+			if (show.Contains("Pdf0"))
+				show = show.Replace("Pdf0", "Pdf1");
+			else
+				show = show.Replace("Pdf1", "Pdf0");
+		}
+		else if (id.Contains("xml"))
+		{
+			if (show.Contains("Xml0"))
+				show = show.Replace("Xml0", "Xml1");
+			else
+				show = show.Replace("Xml1", "Xml0");
+		}
+		else if (id.Contains("add1"))
+		{
+			if (show.Contains("Add20"))
+				show = show.Replace("Add20", "Add21");
+			else
+				show = show.Replace("Add21", "Add20");
+		}
+		else if (id.Contains("add2"))
+		{
+			if (show.Contains("Add30"))
+				show = show.Replace("Add30", "Add31");
+			else
+				show = show.Replace("Add31", "Add30");
+		}
+
+		context1.PdfTable.ToList().Where(x => x.Id == extractId).FirstOrDefault().ShowFiles = show;
 		context1.SaveChanges();
 	}
 
@@ -186,10 +228,18 @@
 			foreach (var item in pdfChecked)
 				context1.PdfTable.Remove(context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault());
 
+
+
 			if (deleteOnlyXmls.Count > 0)
 			{
 				foreach (var item in deleteOnlyXmls)
+				{
 					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().Xml = null;
+					string show = context1.PdfTable.ToList().Where(x => x.Id.ToString() == item).FirstOrDefault().ShowFiles;
+					if (show.Contains("Xml0"))
+						show = show.Replace("Xml0", "Xml1");
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().ShowFiles = show;
+				}
 			}
 
 
@@ -199,6 +249,11 @@
 				{
 					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile2 = null;
 					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames = context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.Substring(0,context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.IndexOf(":")+1); ;
+					
+					string show = context1.PdfTable.ToList().Where(x => x.Id.ToString() == item).FirstOrDefault().ShowFiles;
+					if (show.Contains("Add30"))
+						show = show.Replace("Add30", "Add31");
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().ShowFiles = show;
 				}
 			}
 
@@ -209,6 +264,16 @@
 					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile1 = context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile2;
 					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().AddFile2 = null;
 					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames = context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.Substring(context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().FileNames.IndexOf(":")+1)+":"; ;
+					string show = context1.PdfTable.ToList().Where(x => x.Id.ToString() == item).FirstOrDefault().ShowFiles;
+					if (show.Contains("Add30"))
+					{
+						show = show.Replace("Add30", "Add31");
+						if(show.Contains("Add21"))
+							show = show.Replace("Add21", "Add20");
+					}
+					else if (show.Contains("Add31") && show.Contains("Add20"))
+						show = show.Replace("Add20", "Add21");
+					context1.PdfTable.Where(x => x.Id.ToString() == item).FirstOrDefault().ShowFiles = show;
 				}
 			}
 

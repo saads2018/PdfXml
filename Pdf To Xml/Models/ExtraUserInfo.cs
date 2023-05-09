@@ -11,7 +11,6 @@ namespace Pdf_To_Xml.Models
         public string UserName { get; set; }
         public string? Name { get; set; }
         public string? About { get; set; }
-        public string? ShowFiles { get; set; }
     }
 }
 

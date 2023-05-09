@@ -58,7 +58,6 @@ namespace Pdf_To_Xml.Data.Migrations
                     UserName = table.Column<string>(maxLength: 256, nullable: false),
                     Name = table.Column<string>(maxLength: 64, nullable: true),
                     About = table.Column<string>(maxLength: 2000, nullable: true),
-                    ShowFiles = table.Column<string>(maxLength: 256, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -187,7 +186,8 @@ namespace Pdf_To_Xml.Data.Migrations
                    FileNames = table.Column<string>(type: "varchar(MAX)", nullable: true),
                    AddFile1 = table.Column<byte[]>(type: "varbinary(MAX)", nullable: true),
                    AddFile2 = table.Column<byte[]>(type: "varbinary(MAX)", nullable: true),
-                   FirstPgDf = table.Column<int>(type: "int", nullable: true)
+                   FirstPgDf = table.Column<int>(type: "int", nullable: true),
+                   ShowFiles = table.Column<string>(maxLength: 256, nullable: true)
                },
                 constraints: table =>
                 {

@@ -51,14 +51,14 @@
 								{
 							<tr>
 										<td><a href="" target="_self" @onclick="@(e=> ViewUserInfo(@pdf.UserName.Substring(0,pdf.UserName.IndexOf(':'))))">@convertString(pdf.UserName.Substring(0,pdf.UserName.IndexOf('@')))</a></td>
-								
-								@if (context1.ExtraUserInfo.ToList().Where(x => x.UserName == pdf.UserName.Substring(0, pdf.UserName.IndexOf(':'))).FirstOrDefault().ShowFiles=="1")
-								{
 									<td>
-										<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':') + 1))</a>
+										@if (pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("f") + 1, 1) == "1")
+										{
+											<a href="" target="_self" @onclick="@(e=>Download("1",pdf))">@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':') + 1))</a>
+										}
 									</td>
 									<td>
-										@if (pdf.Xml != null)
+										@if (pdf.Xml != null && pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("l")+1,1)=="1")
 										{
 											<a href="" target="_self" @onclick="@(e=> Download("2",pdf))">
 												@convertString(pdf.UserName.Substring(pdf.UserName.IndexOf(':')+1).Replace(".pdf",".xml"))
@@ -66,7 +66,7 @@
 										}
 									</td>
 									<td>
-										@if (pdf.AddFile1 != null)
+										@if (pdf.AddFile1 != null && pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("2") + 1, 1) == "1")
 										{
 											<a href="" target="_self" @onclick="@(e=> Download("3",pdf))">
 												@convertString(pdf.FileNames.Substring(0,pdf.FileNames.IndexOf(':')))
@@ -74,14 +74,14 @@
 										}
 									</td>
 									<td>
-										@if (pdf.AddFile2 != null)
+										@if (pdf.AddFile2 != null && pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("3") + 1, 1) == "1")
 										{
 											<a href="" target="_self" @onclick="@(e=> Download("4",pdf))">
 												@convertString(pdf.FileNames.Substring(pdf.FileNames.IndexOf(':')+1))
 											</a>
 										}
 									</td>
-								}
+								
 									</tr>
 								}	
 							</tbody>
