@@ -50,7 +50,10 @@
 								@foreach(PdfTable pdf in Enumerable.Reverse(context1.PdfTable.ToList()).ToList())
 								{
 							<tr>
+									@if (!hideUser(pdf))
+									{
 										<td><a href="" target="_self" @onclick="@(e=> ViewUserInfo(@pdf.UserName.Substring(0,pdf.UserName.IndexOf(':'))))">@convertString(pdf.UserName.Substring(0,pdf.UserName.IndexOf('@')))</a></td>
+									}
 									<td>
 										@if (pdf.ShowFiles.Substring(pdf.ShowFiles.IndexOf("f") + 1, 1) == "1")
 										{
@@ -108,7 +111,19 @@
 	public string About;
 	public ApplicationDbContext context1;
 	private bool DownloadRunning;
-	
+
+	private bool hideUser(PdfTable pdf)
+	{
+		bool hide = true;
+
+		if ((pdf.Pdf != null && pdf.ShowFiles?.Substring(pdf.ShowFiles.IndexOf("f") + 1,1) == "1") || (pdf.Xml != null && pdf.ShowFiles?.Substring(pdf.ShowFiles.IndexOf("l") + 1,1) == "1") || (pdf.AddFile1 != null && pdf.ShowFiles?.Substring(pdf.ShowFiles.IndexOf("2") + 1,1) == "1") || (pdf.AddFile2 != null && pdf.ShowFiles?.Substring(pdf.ShowFiles.IndexOf("3") + 1,1) == "1"))
+		{
+			hide = false;
+		}
+
+		return hide;
+	}
+
 	private string convertString(string s)
 	{
 		if(s.Length>17)

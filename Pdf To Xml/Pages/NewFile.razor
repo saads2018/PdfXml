@@ -443,13 +443,15 @@
 			foreach(var name1 in selectedNames)
 			{
 				if (name1.Text.Contains("("))
+				{
+					while(name1.Text.Contains("("))
 					{
-						while(name1.Text.Contains("("))
-							{
-								name1.Text = name1.Text.Replace(name1.Text.Substring(name1.Text.IndexOf("("), name1.Text.IndexOf(")") - name1.Text.IndexOf("(") + 1), "");
-							}
+						name1.Text = name1.Text.Replace(name1.Text.Substring(name1.Text.IndexOf("("), name1.Text.IndexOf(")") - name1.Text.IndexOf("(") + 1), "");
 					}
+				}
 			}
+
+			selectedNames = selectedNames.DistinctBy(x => x.Text.Trim()).ToList();
 
 		}
 		catch (Exception ex)
@@ -598,8 +600,6 @@
 						var nameDefault1 = selectedNames.Where(x => x.Text.Trim() == "Default").FirstOrDefault();
 						var extractedName = selectedNames.Where(x => v.Contains(x.Text.ToLower().Trim())).FirstOrDefault();
 						
-						wordDocs[i].Text = wordDocs[i].Text.Replace(extractedName.Text,"");
-
 						if (extractedName == null)
 							word.Type = "unknown";
 						else
