@@ -1,3 +1,17 @@
+# Preview
+
+#### Home
+![home](https://github.com/saads2018/PdfXml/assets/71264405/119ccf99-7a84-43d3-91c9-0b4a1d1783a1)
+#### Extract From Screenplay (Pdf)
+![extract names](https://github.com/saads2018/PdfXml/assets/71264405/bdc5cdd7-3de6-4caf-badb-a96fac74921f)
+#### Assign Names To Characters
+![assign names](https://github.com/saads2018/PdfXml/assets/71264405/0a6302f8-05f8-4541-88f7-ceae5d01e734)
+#### File Management
+![filesManagement](https://github.com/saads2018/PdfXml/assets/71264405/e39fcca9-9f16-440a-8c62-22321751f3f0)
+#### Pdf & Xml Preview
+![pdf](https://github.com/saads2018/PdfXml/assets/71264405/a4d633ad-d97e-42ff-9287-24a17207acf0)
+![xmlResult](https://github.com/saads2018/PdfXml/assets/71264405/c2bcce2b-9e0a-4602-b706-343be7196342)
+
 # PdfToXml Setup
 
 1. Create a Database.
